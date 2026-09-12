@@ -1,0 +1,250 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  CUSTOMER
+  ADMIN
+}
+
+enum OrderStatus {
+  PENDING_PAYMENT
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
+
+enum DiscountType {
+  PERCENT
+  FIXED
+}
+
+enum StrengthRating {
+  LOW
+  MEDIUM
+  HIGH
+  VERY_HIGH
+}
+
+enum OrderItemKind {
+  PRODUCT
+  CUSTOM
+}
+
+// Credentials-only auth (no OAuth), JWT session strategy -> no NextAuth
+// Account/Session/VerificationToken tables needed.
+model User {
+  id           String   @id @default(cuid())
+  name         String?
+  email        String   @unique
+  passwordHash String
+  role         Role     @default(CUSTOMER)
+  image        String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  addresses     Address[]
+  orders        Order[]
+  wishlistItems WishlistItem[]
+  reviews       Review[]
+}
+
+model Category {
+  id          String  @id @default(cuid())
+  name        String
+  slug        String  @unique
+  description String? @db.Text
+  image       String?
+
+  products  Product[]
+  createdAt DateTime  @default(now())
+}
+
+model Product {
+  id             String   @id @default(cuid())
+  name           String
+  slug           String   @unique
+  description    String   @db.Text
+  price          Decimal  @db.Decimal(10, 2)
+  compareAtPrice Decimal? @db.Decimal(10, 2)
+  images         Json
+  material       String?
+  tags           Json?
+  stock          Int      @default(25)
+  rating         Decimal  @default(0) @db.Decimal(2, 1)
+  reviewCount    Int      @default(0)
+  featured       Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id])
+
+  reviews       Review[]
+  wishlistItems WishlistItem[]
+  orderItems    OrderItem[]
+
+  @@index([categoryId])
+}
+
+model Filament {
+  id           String         @id @default(cuid())
+  name         String
+  type         String
+  colors       Json
+  pricePerGram Decimal        @db.Decimal(6, 3)
+  density      Decimal        @db.Decimal(4, 2)
+  stockGrams   Int            @default(5000)
+  strength     StrengthRating @default(MEDIUM)
+  finish       String
+  description  String         @db.Text
+  active       Boolean        @default(true)
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  orderItems OrderItem[]
+}
+
+// Singleton row (id always 1) holding the tunable constants the
+// pricing engine (lib/pricing.ts) uses to turn geometry into a quote.
+model PricingSettings {
+  id                     Int      @id @default(1)
+  machineRatePerHour     Decimal  @default(2.5) @db.Decimal(6, 2)
+  printSpeedGramsPerHour Decimal  @default(20) @db.Decimal(6, 2)
+  finishingCostFlat      Decimal  @default(2) @db.Decimal(6, 2)
+  infillFactor           Decimal  @default(0.3) @db.Decimal(4, 3)
+  shapeFactor            Decimal  @default(0.55) @db.Decimal(4, 3)
+  updatedAt              DateTime @updatedAt
+}
+
+model Order {
+  id              String      @id @default(cuid())
+  userId          String?
+  user            User?       @relation(fields: [userId], references: [id])
+  guestEmail      String?
+  status          OrderStatus @default(PENDING_PAYMENT)
+  subtotal        Decimal     @db.Decimal(10, 2)
+  discountTotal   Decimal     @default(0) @db.Decimal(10, 2)
+  shippingTotal   Decimal     @default(0) @db.Decimal(10, 2)
+  total           Decimal     @db.Decimal(10, 2)
+  couponCode      String?
+  shippingName    String
+  shippingLine1   String
+  shippingLine2   String?
+  shippingCity    String
+  shippingState   String
+  shippingZip     String
+  shippingCountry String
+  trackingNumber  String?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  items OrderItem[]
+
+  @@index([userId])
+}
+
+model OrderItem {
+  id      String @id @default(cuid())
+  orderId String
+  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  productId String?
+  product   Product? @relation(fields: [productId], references: [id])
+
+  filamentId String?
+  filament   Filament? @relation(fields: [filamentId], references: [id])
+
+  kind      OrderItemKind
+  name      String
+  quantity  Int
+  unitPrice Decimal       @db.Decimal(10, 2)
+
+  // Snapshot of the customize-wizard configuration, only set when kind = CUSTOM
+  fileUrl        String?
+  fileName       String?
+  fileType       String?
+  heightMm       Decimal? @db.Decimal(8, 2)
+  widthMm        Decimal? @db.Decimal(8, 2)
+  depthMm        Decimal? @db.Decimal(8, 2)
+  estWeightGrams Decimal? @db.Decimal(8, 2)
+  estPrintHours  Decimal? @db.Decimal(6, 2)
+
+  @@index([orderId])
+}
+
+model WishlistItem {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, productId])
+}
+
+model Review {
+  id         String   @id @default(cuid())
+  productId  String
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id])
+  authorName String
+  rating     Int
+  comment    String   @db.Text
+  photoUrl   String?
+  createdAt  DateTime @default(now())
+
+  @@index([productId])
+}
+
+model Coupon {
+  id           String       @id @default(cuid())
+  code         String       @unique
+  discountType DiscountType
+  value        Decimal      @db.Decimal(10, 2)
+  minSubtotal  Decimal?     @db.Decimal(10, 2)
+  usageLimit   Int?
+  usedCount    Int          @default(0)
+  active       Boolean      @default(true)
+  expiresAt    DateTime?
+  createdAt    DateTime     @default(now())
+}
+
+model Address {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fullName  String
+  line1     String
+  line2     String?
+  city      String
+  state     String
+  zip       String
+  country   String
+  phone     String?
+  isDefault Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model NewsletterSubscriber {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  createdAt DateTime @default(now())
+}
+
+model ContactMessage {
+  id        String   @id @default(cuid())
+  name      String
+  email     String
+  subject   String
+  message   String   @db.Text
+  createdAt DateTime @default(now())
+}

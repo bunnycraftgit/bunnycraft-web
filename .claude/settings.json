@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx --yes create-next-app@latest . --ts --tailwind --eslint --app --src-dir --import-alias \"@/*\" --use-npm --turbopack --yes)",
+      "Bash(npx --yes create-next-app@latest bunnycraft --ts --tailwind --eslint --app --src-dir --import-alias \"@/*\" --use-npm --turbopack --yes)"
+    ]
+  }
+}

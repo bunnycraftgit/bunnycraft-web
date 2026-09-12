@@ -1,0 +1,31 @@
+import { Skeleton } from "@/components/ui/skeleton";
+
+export default function ShopLoading() {
+  return (
+    <div className="container-page py-12">
+      <div className="mb-8">
+        <Skeleton className="h-9 w-64" />
+        <Skeleton className="mt-3 h-4 w-32" />
+      </div>
+      <div className="flex flex-col gap-8 lg:flex-row">
+        <div className="hidden w-56 shrink-0 lg:block">
+          <Skeleton className="h-6 w-20" />
+          <div className="mt-4 flex flex-col gap-2">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <Skeleton key={i} className="h-8 w-full" />
+            ))}
+          </div>
+        </div>
+        <div className="grid flex-1 grid-cols-2 gap-5 sm:grid-cols-3 xl:grid-cols-4">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div key={i} className="flex flex-col gap-3">
+              <Skeleton className="aspect-square w-full rounded-2xl" />
+              <Skeleton className="h-4 w-3/4" />
+              <Skeleton className="h-4 w-1/2" />
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
