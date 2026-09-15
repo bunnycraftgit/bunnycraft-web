@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { LoaderCircleIcon, PencilIcon, PlusIcon, TrashIcon, XIcon } from "lucide-react";
 
@@ -32,10 +33,13 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { AdminSearchBar } from "@/components/admin/admin-search-bar";
+import { AdminPagination } from "@/components/admin/admin-pagination";
 import { formatCurrency } from "@/lib/utils";
 
 type Strength = "LOW" | "MEDIUM" | "HIGH" | "VERY_HIGH";
 type FilamentColor = { name: string; hex: string };
+type Meta = { page: number; pageCount: number; total: number; pageSize: number };
 type Filament = {
   id: string;
   name: string;
@@ -63,8 +67,14 @@ const EMPTY = {
   active: true,
 };
 
-export function FilamentsManager({ initial }: { initial: Filament[] }) {
+export function FilamentsManager({ initial, meta }: { initial: Filament[]; meta: Meta }) {
+  const router = useRouter();
   const [filaments, setFilaments] = React.useState(initial);
+  const [prevInitial, setPrevInitial] = React.useState(initial);
+  if (initial !== prevInitial) {
+    setPrevInitial(initial);
+    setFilaments(initial);
+  }
   const [open, setOpen] = React.useState(false);
   const [editing, setEditing] = React.useState<Filament | null>(null);
   const [form, setForm] = React.useState(EMPTY);
@@ -98,6 +108,7 @@ export function FilamentsManager({ initial }: { initial: Filament[] }) {
       );
       toast.success("Filament saved.");
       setOpen(false);
+      router.refresh();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Couldn't save that filament.");
     } finally {
@@ -114,6 +125,7 @@ export function FilamentsManager({ initial }: { initial: Filament[] }) {
     }
     setFilaments((prev) => prev.filter((f) => f.id !== id));
     toast.success("Filament deleted.");
+    router.refresh();
   }
 
   async function toggleActive(f: Filament) {
@@ -132,6 +144,10 @@ export function FilamentsManager({ initial }: { initial: Filament[] }) {
         <Button size="sm" onClick={openAdd}>
           <PlusIcon /> Add filament
         </Button>
+      </div>
+
+      <div className="mb-4">
+        <AdminSearchBar placeholder="Search filaments…" />
       </div>
 
       <div className="overflow-hidden rounded-2xl border border-border">
@@ -174,6 +190,7 @@ export function FilamentsManager({ initial }: { initial: Filament[] }) {
             ))}
           </TableBody>
         </Table>
+        <AdminPagination {...meta} />
       </div>
 
       <Dialog open={open} onOpenChange={setOpen}>

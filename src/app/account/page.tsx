@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 
 import { Separator } from "@/components/ui/separator";
 import { ProfileForm } from "@/components/account/profile-form";
+import { ChangePasswordForm } from "@/components/account/change-password-form";
 import { AddressManager } from "@/components/account/address-manager";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -45,7 +46,22 @@ export default async function AccountPage() {
 
       <div className="rounded-2xl border border-border bg-card p-6 shadow-soft">
         <h2 className="mb-4 font-heading text-lg font-semibold">Profile</h2>
-        <ProfileForm initialName={user.name ?? ""} email={user.email} />
+        <ProfileForm
+          initialName={user.name ?? ""}
+          email={user.email}
+          initialImage={user.image}
+          memberSince={user.createdAt.toLocaleDateString("en-IN", {
+            year: "numeric",
+            month: "long",
+          })}
+        />
+      </div>
+
+      <Separator />
+
+      <div className="rounded-2xl border border-border bg-card p-6 shadow-soft">
+        <h2 className="mb-4 font-heading text-lg font-semibold">Password</h2>
+        <ChangePasswordForm />
       </div>
 
       <Separator />

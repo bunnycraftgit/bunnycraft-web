@@ -90,3 +90,26 @@ export async function getOrdersForUser(userId: string): Promise<PlainOrder[]> {
   });
   return orders.map(mapOrder);
 }
+
+// Guests have no account, so the only way for them to look up an order later
+// is the (truncated) order number shown on the confirmation page plus the
+// email they checked out with. The full id also matches, since it trivially
+// "ends with" itself, so this works for logged-in order ids too.
+export async function findOrderForTracking(
+  orderNumber: string,
+  email: string
+): Promise<PlainOrder | null> {
+  const suffix = orderNumber.trim().toLowerCase().replace(/[^a-z0-9]/g, "");
+  if (!suffix) return null;
+
+  const order = await prisma.order.findFirst({
+    where: { id: { endsWith: suffix } },
+    include: { items: true, user: { select: { email: true } } },
+  });
+  if (!order) return null;
+
+  const orderEmail = (order.user?.email ?? order.guestEmail ?? "").toLowerCase();
+  if (orderEmail !== email.trim().toLowerCase()) return null;
+
+  return mapOrder(order);
+}

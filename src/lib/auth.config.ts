@@ -1,3 +1,4 @@
+import { NextResponse } from "next/server";
 import type { NextAuthConfig } from "next-auth";
 
 // Edge-safe config shared by middleware and the full auth.ts. Must not import
@@ -14,20 +15,38 @@ export const authConfig: NextAuthConfig = {
   callbacks: {
     authorized({ auth, request }) {
       const isLoggedIn = !!auth?.user;
+      const isAdmin = isLoggedIn && auth?.user.role === "ADMIN";
       const { pathname } = request.nextUrl;
 
-      if (pathname.startsWith("/admin")) {
-        return isLoggedIn && auth?.user.role === "ADMIN";
+      // The admin panel has its own login page, entirely separate from the
+      // storefront's — never bounce a failed /bunnycraft-admin check to /login.
+      if (pathname.startsWith("/bunnycraft-admin")) {
+        if (pathname === "/bunnycraft-admin/login") {
+          return isAdmin ? NextResponse.redirect(new URL("/bunnycraft-admin", request.url)) : true;
+        }
+        if (isAdmin) return true;
+        const loginUrl = new URL("/bunnycraft-admin/login", request.url);
+        loginUrl.searchParams.set("callbackUrl", pathname);
+        return NextResponse.redirect(loginUrl);
       }
       if (pathname.startsWith("/account")) {
         return isLoggedIn;
       }
       return true;
     },
-    jwt({ token, user }) {
+    jwt({ token, user, trigger, session }) {
       if (user?.id) {
         token.id = user.id;
         token.role = user.role;
+      }
+      // useSession().update({ name, image }) on the profile form lands here —
+      // without this, a changed name/avatar wouldn't show up until re-login
+      // since the JWT strategy has no server-side session to re-read from.
+      if (trigger === "update" && session) {
+        if (typeof session.name === "string") token.name = session.name;
+        if (typeof session.image === "string" || session.image === null) {
+          token.picture = session.image;
+        }
       }
       return token;
     },

@@ -1,9 +1,11 @@
 "use client";
 
 import * as React from "react";
+import Image from "next/image";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { toast } from "sonner";
-import { PackageSearchIcon, SendIcon } from "lucide-react";
+import { SendIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,6 +25,7 @@ const SOCIAL_ICONS = {
 } as const;
 
 export function Footer() {
+  const pathname = usePathname();
   const [email, setEmail] = React.useState("");
   const [submitting, setSubmitting] = React.useState(false);
 
@@ -46,14 +49,14 @@ export function Footer() {
     }
   }
 
+  if (pathname?.startsWith("/bunnycraft-admin")) return null;
+
   return (
     <footer className="mt-24 border-t border-border bg-muted/40">
       <div className="container-page grid grid-cols-1 gap-10 py-16 sm:grid-cols-2 lg:grid-cols-5">
         <div className="flex flex-col gap-4 lg:col-span-2">
           <Link href="/" className="flex items-center gap-2">
-            <span className="flex size-8 items-center justify-center rounded-none bg-primary text-primary-foreground">
-              <PackageSearchIcon className="size-4" />
-            </span>
+            <Image src="/bunnycraft-logo.svg" alt="" width={32} height={32} className="size-8" />
             <span className="font-heading text-lg font-bold">{SITE_NAME}</span>
           </Link>
           <p className="max-w-sm text-sm text-muted-foreground">

@@ -4,6 +4,7 @@ import { ArrowLeftIcon, LoaderCircleIcon, MinusIcon, PlusIcon, ShoppingBagIcon }
 
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { DeliveryEstimate } from "@/components/shop/delivery-estimate";
 import { calculateCustomPrintPrice, type Dimensions, type PricingSettingsValues } from "@/lib/pricing";
 import { formatCurrency } from "@/lib/utils";
 import type { PlainFilament } from "@/lib/data/filaments";
@@ -109,6 +110,12 @@ export function PriceReviewStep({
             ))}
           </dl>
           <Separator className="my-4" />
+          {breakdown.minimumApplied && (
+            <p className="mb-2 text-xs text-muted-foreground">
+              Minimum order price applied — this print&apos;s computed cost was below our{" "}
+              {formatCurrency(breakdown.unitPrice)} minimum.
+            </p>
+          )}
           <div className="flex justify-between text-sm">
             <span className="text-muted-foreground">Unit price × {quantity}</span>
             <span>{formatCurrency(breakdown.unitPrice)}</span>
@@ -117,6 +124,8 @@ export function PriceReviewStep({
             <span className="font-heading text-lg font-semibold">Total</span>
             <span className="font-heading text-2xl font-bold">{formatCurrency(breakdown.total)}</span>
           </div>
+          <Separator className="my-4" />
+          <DeliveryEstimate items={[{ kind: "CUSTOM", estPrintHours: breakdown.printTimeHours }]} />
         </div>
       </div>
 

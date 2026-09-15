@@ -80,7 +80,7 @@ export function CustomizeWizard({
       });
 
       toast.success("Custom print added to your cart.");
-      router.push("/cart");
+      router.push("/bunnycraft-cart");
     } catch {
       toast.error("Something went wrong uploading your file. Please try again.");
     } finally {

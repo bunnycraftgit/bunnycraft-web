@@ -7,8 +7,11 @@ import { ProductGallery } from "@/components/shop/product-gallery";
 import { AddToCartPanel } from "@/components/shop/add-to-cart-panel";
 import { StarRating } from "@/components/shop/star-rating";
 import { ProductCard } from "@/components/shop/product-card";
+import { WriteReviewForm } from "@/components/shop/write-review-form";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { auth } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 import { getProductBySlug, getRelatedProducts } from "@/lib/data/products";
 import { getProductReviews } from "@/lib/data/reviews";
 import { formatCurrency } from "@/lib/utils";
@@ -36,9 +39,16 @@ export default async function ProductPage({
   const product = await getProductBySlug(slug);
   if (!product) notFound();
 
-  const [reviews, related] = await Promise.all([
+  const session = await auth();
+  const [reviews, related, existingReview] = await Promise.all([
     getProductReviews(product.id),
     getRelatedProducts(product.categorySlug, product.slug),
+    session?.user
+      ? prisma.review.findFirst({
+          where: { productId: product.id, userId: session.user.id },
+          select: { id: true },
+        })
+      : null,
   ]);
 
   return (
@@ -87,6 +97,11 @@ export default async function ProductPage({
 
       <div className="mx-auto max-w-3xl">
         <h2 className="mb-6 text-2xl font-bold">Customer Reviews</h2>
+
+        <div className="mb-8">
+          <WriteReviewForm productId={product.id} hasReviewed={!!existingReview} />
+        </div>
+
         {reviews.length === 0 ? (
           <p className="text-sm text-muted-foreground">No reviews yet for this product.</p>
         ) : (

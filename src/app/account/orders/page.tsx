@@ -43,7 +43,7 @@ export default async function OrdersPage() {
               <div>
                 <p className="font-medium">Order #{order.id.slice(-8).toUpperCase()}</p>
                 <p className="text-xs text-muted-foreground">
-                  {new Date(order.createdAt).toLocaleDateString(undefined, {
+                  {new Date(order.createdAt).toLocaleDateString("en-IN", {
                     year: "numeric",
                     month: "long",
                     day: "numeric",

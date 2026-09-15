@@ -1,7 +1,9 @@
 "use client";
 
 import * as React from "react";
+import Image from "next/image";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
 import {
   BoxesIcon,
@@ -11,16 +13,15 @@ import {
   GiftIcon,
   HeartIcon,
   HomeIcon,
-  LayoutDashboardIcon,
   LogOutIcon,
   MenuIcon,
-  PackageSearchIcon,
   ShoppingBagIcon,
   UserRoundIcon,
   WrenchIcon,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import {
   DropdownMenu,
@@ -50,6 +51,7 @@ const CATEGORY_ICONS = {
 } as const;
 
 export function Navbar() {
+  const pathname = usePathname();
   const { data: session, status } = useSession();
   const cartCount = useCartCount();
 
@@ -64,6 +66,8 @@ export function Navbar() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
+  if (pathname?.startsWith("/bunnycraft-admin")) return null;
+
   return (
     <header
       className={cn(
@@ -73,9 +77,7 @@ export function Navbar() {
     >
       <div className="container-page flex h-16 items-center gap-4">
         <Link href="/" className="flex shrink-0 items-center gap-2">
-          <span className="flex size-8 items-center justify-center rounded-none bg-primary text-primary-foreground">
-            <PackageSearchIcon className="size-4" />
-          </span>
+          <Image src="/bunnycraft-logo.svg" alt="" width={32} height={32} className="size-8" priority />
           <span className="font-heading text-lg font-bold tracking-tight">{SITE_NAME}</span>
         </Link>
 
@@ -137,8 +139,17 @@ export function Navbar() {
             {status === "authenticated" && session?.user ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" aria-label="Account">
-                    <UserRoundIcon className="size-[18px]" />
+                  <Button variant="ghost" size="icon" aria-label="Account" className="rounded-full">
+                    {session.user.image ? (
+                      <Avatar className="size-7 rounded-full">
+                        <AvatarImage src={session.user.image} alt="" />
+                        <AvatarFallback className="rounded-full text-[10px]">
+                          {(session.user.name ?? session.user.email ?? "?")[0]?.toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                    ) : (
+                      <UserRoundIcon className="size-[18px]" />
+                    )}
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-48">
@@ -156,13 +167,6 @@ export function Navbar() {
                       <ShoppingBagIcon /> Orders
                     </Link>
                   </DropdownMenuItem>
-                  {session.user.role === "ADMIN" && (
-                    <DropdownMenuItem asChild>
-                      <Link href="/admin">
-                        <LayoutDashboardIcon /> Admin
-                      </Link>
-                    </DropdownMenuItem>
-                  )}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem variant="destructive" onSelect={() => signOut()}>
                     <LogOutIcon /> Sign out

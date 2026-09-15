@@ -225,7 +225,7 @@ export function CartPageContent() {
           </div>
 
           <Button asChild size="lg" className="mt-5 w-full">
-            <Link href="/checkout">Proceed to Checkout</Link>
+            <Link href="/bunnycraft-checkout">Proceed to Checkout</Link>
           </Button>
           <Button asChild variant="ghost" className="mt-2 w-full">
             <Link href="/shop">Continue shopping</Link>

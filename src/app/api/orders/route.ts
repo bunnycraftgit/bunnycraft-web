@@ -5,6 +5,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getPricingSettings } from "@/lib/data/filaments";
 import { calculateCustomPrintPrice, round2 } from "@/lib/pricing";
+import { createRazorpayOrder } from "@/lib/payment";
 import { createOrderSchema } from "@/lib/validations/order";
 
 const FREE_SHIPPING_THRESHOLD = 75;
@@ -47,15 +48,35 @@ export async function POST(request: Request) {
 
   const settings = await getPricingSettings();
 
+  const productIds = [...new Set(items.filter((i) => i.kind === "PRODUCT").map((i) => i.productId))];
+  const filamentIds = [...new Set(items.filter((i) => i.kind === "CUSTOM").map((i) => i.filamentId))];
+
+  const [products, filaments] = await Promise.all([
+    productIds.length ? prisma.product.findMany({ where: { id: { in: productIds } } }) : [],
+    filamentIds.length ? prisma.filament.findMany({ where: { id: { in: filamentIds } } }) : [],
+  ]);
+  const productById = new Map(products.map((p) => [p.id, p]));
+  const filamentById = new Map(filaments.map((f) => [f.id, f]));
+
+  const invalidProductIds = productIds.filter((id) => !productById.has(id));
+  const invalidFilamentIds = filamentIds.filter((id) => !filamentById.has(id));
+  if (invalidProductIds.length || invalidFilamentIds.length) {
+    return NextResponse.json(
+      {
+        error: "Some items in your cart are no longer available and were removed.",
+        invalidProductIds,
+        invalidFilamentIds,
+      },
+      { status: 400 }
+    );
+  }
+
   let subtotal = 0;
   const itemsToCreate: Prisma.OrderItemCreateWithoutOrderInput[] = [];
 
   for (const item of items) {
     if (item.kind === "PRODUCT") {
-      const product = await prisma.product.findUnique({ where: { id: item.productId } });
-      if (!product) {
-        return NextResponse.json({ error: "One of the products in your cart is no longer available." }, { status: 400 });
-      }
+      const product = productById.get(item.productId)!;
       const unitPrice = Number(product.price);
       subtotal += unitPrice * item.quantity;
       itemsToCreate.push({
@@ -66,10 +87,7 @@ export async function POST(request: Request) {
         product: { connect: { id: product.id } },
       });
     } else {
-      const filament = await prisma.filament.findUnique({ where: { id: item.filamentId } });
-      if (!filament) {
-        return NextResponse.json({ error: "The selected filament is no longer available." }, { status: 400 });
-      }
+      const filament = filamentById.get(item.filamentId)!;
       const breakdown = calculateCustomPrintPrice({
         dimensions: { heightMm: item.heightMm, widthMm: item.widthMm, depthMm: item.depthMm },
         filament: { pricePerGram: Number(filament.pricePerGram), density: Number(filament.density) },
@@ -120,8 +138,6 @@ export async function POST(request: Request) {
   const shippingTotal = subtotal - discountTotal >= FREE_SHIPPING_THRESHOLD ? 0 : FLAT_SHIPPING_RATE;
   const total = round2(Math.max(0, subtotal - discountTotal) + shippingTotal);
 
-  // Payment is stubbed for now (see lib/payment.ts) — the order is created
-  // directly with PENDING_PAYMENT and no charge occurs.
   const order = await prisma.order.create({
     data: {
       userId: session?.user?.id,
@@ -143,6 +159,23 @@ export async function POST(request: Request) {
     },
   });
 
+  let razorpayOrder;
+  try {
+    razorpayOrder = await createRazorpayOrder(total, order.id);
+  } catch (err) {
+    console.error("[POST /api/orders] Razorpay order creation failed —", err);
+    await prisma.order.delete({ where: { id: order.id } }).catch(() => null);
+    return NextResponse.json(
+      { error: "Couldn't start payment. Please try again in a moment." },
+      { status: 502 }
+    );
+  }
+
+  await prisma.order.update({
+    where: { id: order.id },
+    data: { razorpayOrderId: razorpayOrder.id },
+  });
+
   if (session?.user && saveAddress) {
     await prisma.address.create({
       data: {
@@ -159,5 +192,14 @@ export async function POST(request: Request) {
     });
   }
 
-  return NextResponse.json({ orderId: order.id });
+  return NextResponse.json({
+    orderId: order.id,
+    razorpayOrderId: razorpayOrder.id,
+    amount: razorpayOrder.amount,
+    currency: razorpayOrder.currency,
+    keyId: process.env.RAZORPAY_KEY_ID,
+    customerName: shipping.fullName,
+    customerEmail: session?.user ? undefined : guestEmail,
+    customerPhone: shipping.phone,
+  });
 }

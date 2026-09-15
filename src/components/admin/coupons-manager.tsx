@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { LoaderCircleIcon, PencilIcon, PlusIcon, TrashIcon } from "lucide-react";
 
@@ -31,6 +32,8 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { AdminSearchBar } from "@/components/admin/admin-search-bar";
+import { AdminPagination } from "@/components/admin/admin-pagination";
 import { formatCurrency } from "@/lib/utils";
 
 type DiscountType = "PERCENT" | "FIXED";
@@ -45,6 +48,7 @@ type Coupon = {
   active: boolean;
   expiresAt: string | null;
 };
+type Meta = { page: number; pageCount: number; total: number; pageSize: number };
 
 const EMPTY = {
   code: "",
@@ -56,8 +60,14 @@ const EMPTY = {
   expiresAt: null as string | null,
 };
 
-export function CouponsManager({ initial }: { initial: Coupon[] }) {
+export function CouponsManager({ initial, meta }: { initial: Coupon[]; meta: Meta }) {
+  const router = useRouter();
   const [coupons, setCoupons] = React.useState(initial);
+  const [prevInitial, setPrevInitial] = React.useState(initial);
+  if (initial !== prevInitial) {
+    setPrevInitial(initial);
+    setCoupons(initial);
+  }
   const [open, setOpen] = React.useState(false);
   const [editing, setEditing] = React.useState<Coupon | null>(null);
   const [form, setForm] = React.useState(EMPTY);
@@ -96,6 +106,7 @@ export function CouponsManager({ initial }: { initial: Coupon[] }) {
       setCoupons((prev) => (editing ? prev.map((c) => (c.id === data.id ? data : c)) : [...prev, data]));
       toast.success("Coupon saved.");
       setOpen(false);
+      router.refresh();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Couldn't save that coupon.");
     } finally {
@@ -111,6 +122,7 @@ export function CouponsManager({ initial }: { initial: Coupon[] }) {
     }
     setCoupons((prev) => prev.filter((c) => c.id !== id));
     toast.success("Coupon deleted.");
+    router.refresh();
   }
 
   async function toggleActive(c: Coupon) {
@@ -129,6 +141,10 @@ export function CouponsManager({ initial }: { initial: Coupon[] }) {
         <Button size="sm" onClick={openAdd}>
           <PlusIcon /> Add coupon
         </Button>
+      </div>
+
+      <div className="mb-4">
+        <AdminSearchBar placeholder="Search coupon codes…" />
       </div>
 
       <div className="overflow-hidden rounded-2xl border border-border">
@@ -174,6 +190,7 @@ export function CouponsManager({ initial }: { initial: Coupon[] }) {
             ))}
           </TableBody>
         </Table>
+        <AdminPagination {...meta} />
       </div>
 
       <Dialog open={open} onOpenChange={setOpen}>

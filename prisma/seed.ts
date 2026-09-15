@@ -42,6 +42,7 @@ async function main() {
       finishingCostFlat: 2,
       infillFactor: 0.3,
       shapeFactor: 0.55,
+      minimumPrice: 10,
     },
   });
 

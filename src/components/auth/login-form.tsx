@@ -100,8 +100,7 @@ export function LoginForm() {
 
         {process.env.NODE_ENV === "development" && (
           <div className="rounded-xl border border-dashed border-border p-3 text-center text-xs text-muted-foreground">
-            Demo accounts — customer: demo@bunnycraft.com / Demo1234! · admin:
-            admin@bunnycraft.com / Admin123!
+            Demo account — customer: demo@bunnycraft.com / Demo1234!
           </div>
         )}
       </form>

@@ -4,7 +4,7 @@ import { auth } from "@/lib/auth";
 
 /**
  * Per-route admin guard for /api/admin/* handlers. The proxy only redirects
- * page navigation to /admin (a 307 to /login would break `fetch` callers),
+ * page navigation to /bunnycraft-admin (a 307 to /login would break `fetch` callers),
  * so API routes authorize themselves directly.
  */
 export async function requireAdmin() {

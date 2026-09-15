@@ -1,14 +1,17 @@
 "use client";
 
 import * as React from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
-import { LoaderCircleIcon, PencilIcon, PlusIcon, TrashIcon } from "lucide-react";
+import { CopyIcon, LoaderCircleIcon, PencilIcon, PlusIcon, TrashIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -31,7 +34,13 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { AdminSearchBar } from "@/components/admin/admin-search-bar";
+import { AdminPagination } from "@/components/admin/admin-pagination";
+import { BulkActionBar } from "@/components/admin/bulk-action-bar";
+import { ProductImageUploader } from "@/components/admin/product-image-uploader";
 import { formatCurrency } from "@/lib/utils";
+
+const LOW_STOCK_THRESHOLD = 5;
 
 type Category = { id: string; name: string };
 type Product = {
@@ -49,6 +58,7 @@ type Product = {
   categoryId: string;
   category: { name: string };
 };
+type Meta = { page: number; pageCount: number; total: number; pageSize: number };
 
 function emptyForm(categoryId: string) {
   return {
@@ -57,7 +67,7 @@ function emptyForm(categoryId: string) {
     description: "",
     price: 19.99,
     compareAtPrice: null as number | null,
-    images: "",
+    images: [] as string[],
     material: "",
     tags: "",
     stock: 25,
@@ -77,15 +87,38 @@ function slugify(s: string) {
 export function ProductsManager({
   initial,
   categories,
+  meta,
 }: {
   initial: Product[];
   categories: Category[];
+  meta: Meta;
 }) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
   const [products, setProducts] = React.useState(initial);
+  const [prevInitial, setPrevInitial] = React.useState(initial);
+  if (initial !== prevInitial) {
+    setPrevInitial(initial);
+    setProducts(initial);
+  }
+
   const [open, setOpen] = React.useState(false);
   const [editing, setEditing] = React.useState<Product | null>(null);
   const [form, setForm] = React.useState(emptyForm(categories[0]?.id ?? ""));
   const [saving, setSaving] = React.useState(false);
+  const [selected, setSelected] = React.useState<Set<string>>(new Set());
+  const [bulkCategory, setBulkCategory] = React.useState(categories[0]?.id ?? "");
+  const [bulkBusy, setBulkBusy] = React.useState(false);
+
+  function setUrlParam(key: string, value: string) {
+    const params = new URLSearchParams(searchParams);
+    if (value) params.set(key, value);
+    else params.delete(key);
+    params.delete("page");
+    router.push(`${pathname}?${params.toString()}`);
+  }
 
   function openAdd() {
     setEditing(null);
@@ -101,7 +134,7 @@ export function ProductsManager({
       description: p.description,
       price: p.price,
       compareAtPrice: p.compareAtPrice,
-      images: p.images.join("\n"),
+      images: p.images,
       material: p.material ?? "",
       tags: p.tags.join(", "),
       stock: p.stock,
@@ -117,7 +150,6 @@ export function ProductsManager({
       const payload = {
         ...form,
         slug: form.slug || slugify(form.name),
-        images: form.images.split("\n").map((s) => s.trim()).filter(Boolean),
         tags: form.tags.split(",").map((s) => s.trim()).filter(Boolean),
         material: form.material || undefined,
       };
@@ -128,12 +160,9 @@ export function ProductsManager({
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
-      const withCategory = { ...data, category: categories.find((c) => c.id === data.categoryId) };
-      setProducts((prev) =>
-        editing ? prev.map((p) => (p.id === data.id ? withCategory : p)) : [...prev, withCategory]
-      );
       toast.success("Product saved.");
       setOpen(false);
+      router.refresh();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Couldn't save that product.");
     } finally {
@@ -150,6 +179,35 @@ export function ProductsManager({
     }
     setProducts((prev) => prev.filter((p) => p.id !== id));
     toast.success("Product deleted.");
+    router.refresh();
+  }
+
+  async function duplicate(p: Product) {
+    const suffix = Math.random().toString(36).slice(2, 6);
+    const res = await fetch("/api/admin/products", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: `${p.name} (Copy)`,
+        slug: `${p.slug}-copy-${suffix}`,
+        description: p.description,
+        price: p.price,
+        compareAtPrice: p.compareAtPrice,
+        images: p.images,
+        material: p.material ?? undefined,
+        tags: p.tags,
+        stock: p.stock,
+        featured: false,
+        categoryId: p.categoryId,
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      toast.error(data.error ?? "Couldn't duplicate that product.");
+      return;
+    }
+    toast.success("Product duplicated.");
+    router.refresh();
   }
 
   async function toggleFeatured(p: Product) {
@@ -161,19 +219,130 @@ export function ProductsManager({
     }).catch(() => toast.error("Couldn't update that product."));
   }
 
+  function toggleSelected(id: string) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleSelectAll() {
+    setSelected((prev) => (prev.size === products.length ? new Set() : new Set(products.map((p) => p.id))));
+  }
+
+  async function bulkAction(action: "feature" | "unfeature" | "delete" | "setCategory") {
+    setBulkBusy(true);
+    try {
+      const res = await fetch("/api/admin/products/bulk", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ids: [...selected],
+          action,
+          ...(action === "setCategory" ? { categoryId: bulkCategory } : {}),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      toast.success(`Updated ${data.count} product${data.count === 1 ? "" : "s"}.`);
+      setSelected(new Set());
+      router.refresh();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Bulk action failed.");
+    } finally {
+      setBulkBusy(false);
+    }
+  }
+
   return (
     <div>
-      <div className="mb-4 flex items-center justify-between">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <h2 className="font-heading text-lg font-semibold">Products</h2>
         <Button size="sm" onClick={openAdd}>
           <PlusIcon /> Add product
         </Button>
       </div>
 
+      <div className="mb-4 flex flex-wrap items-center gap-3">
+        <AdminSearchBar placeholder="Search products…" />
+        <Select
+          value={searchParams.get("category") ?? "all"}
+          onValueChange={(v) => setUrlParam("category", v === "all" ? "" : v)}
+        >
+          <SelectTrigger size="sm" className="w-44">
+            <SelectValue placeholder="All categories" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All categories</SelectItem>
+            {categories.map((c) => (
+              <SelectItem key={c.id} value={c.id}>
+                {c.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select
+          value={searchParams.get("sort") ?? "newest"}
+          onValueChange={(v) => setUrlParam("sort", v)}
+        >
+          <SelectTrigger size="sm" className="w-40">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="newest">Newest</SelectItem>
+            <SelectItem value="price-asc">Price: low to high</SelectItem>
+            <SelectItem value="price-desc">Price: high to low</SelectItem>
+            <SelectItem value="stock-asc">Stock: low to high</SelectItem>
+            <SelectItem value="name-asc">Name: A–Z</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      <BulkActionBar count={selected.size} onClear={() => setSelected(new Set())}>
+        <Button size="sm" variant="outline" disabled={bulkBusy} onClick={() => bulkAction("feature")}>
+          Feature
+        </Button>
+        <Button size="sm" variant="outline" disabled={bulkBusy} onClick={() => bulkAction("unfeature")}>
+          Unfeature
+        </Button>
+        <Select value={bulkCategory} onValueChange={setBulkCategory}>
+          <SelectTrigger size="sm" className="w-40">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {categories.map((c) => (
+              <SelectItem key={c.id} value={c.id}>
+                {c.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Button size="sm" variant="outline" disabled={bulkBusy} onClick={() => bulkAction("setCategory")}>
+          Move to category
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={bulkBusy}
+          className="text-destructive hover:text-destructive"
+          onClick={() => bulkAction("delete")}
+        >
+          Delete
+        </Button>
+      </BulkActionBar>
+
       <div className="overflow-hidden rounded-2xl border border-border">
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className="w-10">
+                <Checkbox
+                  checked={products.length > 0 && selected.size === products.length}
+                  onCheckedChange={toggleSelectAll}
+                />
+              </TableHead>
               <TableHead>Name</TableHead>
               <TableHead>Category</TableHead>
               <TableHead>Price</TableHead>
@@ -184,28 +353,51 @@ export function ProductsManager({
           </TableHeader>
           <TableBody>
             {products.map((p) => (
-              <TableRow key={p.id}>
+              <TableRow key={p.id} data-state={selected.has(p.id) ? "selected" : undefined}>
+                <TableCell>
+                  <Checkbox checked={selected.has(p.id)} onCheckedChange={() => toggleSelected(p.id)} />
+                </TableCell>
                 <TableCell className="font-medium">{p.name}</TableCell>
                 <TableCell>{p.category?.name}</TableCell>
                 <TableCell>{formatCurrency(p.price)}</TableCell>
-                <TableCell>{p.stock}</TableCell>
+                <TableCell>
+                  <span className={p.stock <= LOW_STOCK_THRESHOLD ? "font-medium text-destructive" : ""}>
+                    {p.stock}
+                  </span>
+                  {p.stock <= LOW_STOCK_THRESHOLD && (
+                    <Badge variant="destructive" className="ml-2">
+                      Low stock
+                    </Badge>
+                  )}
+                </TableCell>
                 <TableCell>
                   <Switch checked={p.featured} onCheckedChange={() => toggleFeatured(p)} />
                 </TableCell>
                 <TableCell>
                   <div className="flex justify-end gap-2">
-                    <button onClick={() => openEdit(p)} className="text-muted-foreground hover:text-foreground">
+                    <button onClick={() => duplicate(p)} className="text-muted-foreground hover:text-foreground" aria-label="Duplicate">
+                      <CopyIcon className="size-4" />
+                    </button>
+                    <button onClick={() => openEdit(p)} className="text-muted-foreground hover:text-foreground" aria-label="Edit">
                       <PencilIcon className="size-4" />
                     </button>
-                    <button onClick={() => remove(p.id)} className="text-muted-foreground hover:text-destructive">
+                    <button onClick={() => remove(p.id)} className="text-muted-foreground hover:text-destructive" aria-label="Delete">
                       <TrashIcon className="size-4" />
                     </button>
                   </div>
                 </TableCell>
               </TableRow>
             ))}
+            {products.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={7} className="py-8 text-center text-sm text-muted-foreground">
+                  No products match your filters.
+                </TableCell>
+              </TableRow>
+            )}
           </TableBody>
         </Table>
+        <AdminPagination {...meta} />
       </div>
 
       <Dialog open={open} onOpenChange={setOpen}>
@@ -284,11 +476,10 @@ export function ProductsManager({
               />
             </div>
             <div className="flex flex-col gap-1.5">
-              <Label>Image URLs (one per line)</Label>
-              <Textarea
-                value={form.images}
-                onChange={(e) => setForm({ ...form, images: e.target.value })}
-                placeholder="https://…"
+              <Label>Images</Label>
+              <ProductImageUploader
+                images={form.images}
+                onChange={(images) => setForm({ ...form, images })}
               />
             </div>
             <div className="grid grid-cols-2 gap-4">
@@ -312,7 +503,7 @@ export function ProductsManager({
           </div>
 
           <DialogFooter>
-            <Button onClick={save} disabled={saving}>
+            <Button onClick={save} disabled={saving || form.images.length === 0}>
               {saving && <LoaderCircleIcon className="animate-spin" />}
               Save product
             </Button>

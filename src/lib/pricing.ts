@@ -16,6 +16,8 @@ export type PricingSettingsValues = {
    * most real objects (figures, brackets, decor) are far from a solid cube.
    */
   shapeFactor: number;
+  /** Price floor for a single custom print unit, regardless of how small/cheap it computes to. */
+  minimumPrice: number;
 };
 
 export const DEFAULT_PRICING_SETTINGS: PricingSettingsValues = {
@@ -24,6 +26,7 @@ export const DEFAULT_PRICING_SETTINGS: PricingSettingsValues = {
   finishingCostFlat: 2,
   infillFactor: 0.3,
   shapeFactor: 0.55,
+  minimumPrice: 10,
 };
 
 export type FilamentForPricing = {
@@ -72,8 +75,10 @@ export type PriceBreakdown = {
   materialCost: number;
   printingCost: number;
   finishingCost: number;
-  /** materialCost + printingCost + finishingCost, before quantity */
+  /** max(materialCost + printingCost + finishingCost, settings.minimumPrice) */
   unitPrice: number;
+  /** True when the computed cost was below the minimum and got floored up to it. */
+  minimumApplied: boolean;
   quantity: number;
   /** unitPrice * quantity */
   total: number;
@@ -97,7 +102,8 @@ export function calculateCustomPrintPrice({
   const materialCost = weightGrams * filament.pricePerGram;
   const printingCost = printTimeHours * settings.machineRatePerHour;
   const finishingCost = settings.finishingCostFlat;
-  const unitPrice = materialCost + printingCost + finishingCost;
+  const computedCost = materialCost + printingCost + finishingCost;
+  const unitPrice = Math.max(computedCost, settings.minimumPrice);
   const safeQuantity = Math.max(1, Math.round(quantity));
 
   return {
@@ -107,6 +113,7 @@ export function calculateCustomPrintPrice({
     printingCost: round2(printingCost),
     finishingCost: round2(finishingCost),
     unitPrice: round2(unitPrice),
+    minimumApplied: unitPrice > computedCost,
     quantity: safeQuantity,
     total: round2(unitPrice * safeQuantity),
   };

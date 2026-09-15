@@ -19,7 +19,7 @@ export const FOOTER_LINKS = {
     { label: "FAQ", href: "/faq" },
     { label: "Shipping Policy", href: "/shipping-policy" },
     { label: "Privacy Policy", href: "/privacy-policy" },
-    { label: "Track Order", href: "/account/orders" },
+    { label: "Track Order", href: "/bunnycraft-track" },
   ],
 } as const;
 

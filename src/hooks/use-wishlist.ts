@@ -11,6 +11,11 @@ function notify() {
   listeners.forEach((l) => l());
 }
 
+function subscribe(listener: () => void) {
+  listeners.add(listener);
+  return () => listeners.delete(listener);
+}
+
 async function loadWishlist() {
   const res = await fetch("/api/wishlist");
   if (!res.ok) return;
@@ -21,20 +26,22 @@ async function loadWishlist() {
 
 export function useWishlist(productId: string) {
   const { status } = useSession();
-  const [, forceRender] = React.useReducer((c) => c + 1, 0);
+
+  // useSyncExternalStore only re-renders this instance when its own snapshot
+  // (this product's membership) actually changes, unlike a manual
+  // listener + forceRender which would re-render every card on the page
+  // whenever any single product's wishlist status changed.
+  const isWishlisted = React.useSyncExternalStore(
+    subscribe,
+    () => wishlistIds?.has(productId) ?? false,
+    () => false
+  );
 
   React.useEffect(() => {
-    const listener = () => forceRender();
-    listeners.add(listener);
     if (status === "authenticated" && wishlistIds === null) {
       loadWishlist();
     }
-    return () => {
-      listeners.delete(listener);
-    };
   }, [status]);
-
-  const isWishlisted = wishlistIds?.has(productId) ?? false;
 
   const toggle = React.useCallback(async () => {
     if (status !== "authenticated") {

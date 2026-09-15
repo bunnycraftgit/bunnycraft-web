@@ -26,7 +26,7 @@ export default function ShippingPolicyPage() {
           <section>
             <h2 className="mb-2 font-heading text-base font-semibold text-foreground">Rates</h2>
             <p>
-              Flat-rate shipping is $6.99 per order. Orders over $75 ship free. Exact carrier
+              Flat-rate shipping is ₹6.99 per order. Orders over ₹75 ship free. Exact carrier
               transit time depends on your location and is shown at checkout once available.
             </p>
           </section>

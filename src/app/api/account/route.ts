@@ -4,7 +4,10 @@ import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
-const schema = z.object({ name: z.string().min(2).max(80) });
+const schema = z.object({
+  name: z.string().min(2).max(80),
+  image: z.string().nullable().optional(),
+});
 
 export async function PATCH(request: Request) {
   const session = await auth();
@@ -19,7 +22,7 @@ export async function PATCH(request: Request) {
 
   await prisma.user.update({
     where: { id: session.user.id },
-    data: { name: parsed.data.name },
+    data: { name: parsed.data.name, ...(parsed.data.image !== undefined ? { image: parsed.data.image } : {}) },
   });
 
   return NextResponse.json({ ok: true });

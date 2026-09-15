@@ -120,30 +120,33 @@ model PricingSettings {
   finishingCostFlat      Decimal  @default(2) @db.Decimal(6, 2)
   infillFactor           Decimal  @default(0.3) @db.Decimal(4, 3)
   shapeFactor            Decimal  @default(0.55) @db.Decimal(4, 3)
+  minimumPrice           Decimal  @default(10) @db.Decimal(6, 2)
   updatedAt              DateTime @updatedAt
 }
 
 model Order {
-  id              String      @id @default(cuid())
-  userId          String?
-  user            User?       @relation(fields: [userId], references: [id])
-  guestEmail      String?
-  status          OrderStatus @default(PENDING_PAYMENT)
-  subtotal        Decimal     @db.Decimal(10, 2)
-  discountTotal   Decimal     @default(0) @db.Decimal(10, 2)
-  shippingTotal   Decimal     @default(0) @db.Decimal(10, 2)
-  total           Decimal     @db.Decimal(10, 2)
-  couponCode      String?
-  shippingName    String
-  shippingLine1   String
-  shippingLine2   String?
-  shippingCity    String
-  shippingState   String
-  shippingZip     String
-  shippingCountry String
-  trackingNumber  String?
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
+  id                String      @id @default(cuid())
+  userId            String?
+  user              User?       @relation(fields: [userId], references: [id])
+  guestEmail        String?
+  status            OrderStatus @default(PENDING_PAYMENT)
+  subtotal          Decimal     @db.Decimal(10, 2)
+  discountTotal     Decimal     @default(0) @db.Decimal(10, 2)
+  shippingTotal     Decimal     @default(0) @db.Decimal(10, 2)
+  total             Decimal     @db.Decimal(10, 2)
+  couponCode        String?
+  razorpayOrderId   String?     @unique
+  razorpayPaymentId String?
+  shippingName      String
+  shippingLine1     String
+  shippingLine2     String?
+  shippingCity      String
+  shippingState     String
+  shippingZip       String
+  shippingCountry   String
+  trackingNumber    String?
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
 
   items OrderItem[]
 

@@ -6,9 +6,12 @@ import { ArrowLeftIcon, PackageIcon, TruckIcon } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { OrderStatusBadge } from "@/components/account/order-status-badge";
 import { OrderTimeline } from "@/components/account/order-timeline";
+import { DeliveryEstimate } from "@/components/shop/delivery-estimate";
 import { auth } from "@/lib/auth";
 import { getOrderById } from "@/lib/data/orders";
 import { formatCurrency } from "@/lib/utils";
+
+const PENDING_STATUSES = new Set(["PENDING_PAYMENT", "PROCESSING", "SHIPPED"]);
 
 export const metadata: Metadata = { title: "Order Details" };
 
@@ -41,7 +44,7 @@ export default async function OrderDetailPage({
         </div>
         <p className="mt-1 text-sm text-muted-foreground">
           Placed{" "}
-          {new Date(order.createdAt).toLocaleDateString(undefined, {
+          {new Date(order.createdAt).toLocaleDateString("en-IN", {
             year: "numeric",
             month: "long",
             day: "numeric",
@@ -55,6 +58,14 @@ export default async function OrderDetailPage({
           <div className="mt-6 flex items-center gap-2 rounded-xl bg-muted/50 p-3 text-sm">
             <TruckIcon className="size-4 text-primary" />
             Tracking number: <span className="font-medium">{order.trackingNumber}</span>
+          </div>
+        )}
+        {PENDING_STATUSES.has(order.status) && (
+          <div className="mt-6">
+            <DeliveryEstimate
+              items={order.items.map((i) => ({ kind: i.kind, estPrintHours: i.estPrintHours }))}
+              from={new Date(order.createdAt)}
+            />
           </div>
         )}
       </div>

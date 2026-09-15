@@ -51,9 +51,24 @@ export const pricingSettingsSchema = z.object({
   finishingCostFlat: z.number().nonnegative(),
   infillFactor: z.number().positive().max(1),
   shapeFactor: z.number().positive().max(1),
+  minimumPrice: z.number().nonnegative(),
 });
 
 export const orderUpdateSchema = z.object({
   status: z.enum(["PENDING_PAYMENT", "PROCESSING", "SHIPPED", "DELIVERED", "CANCELLED"]).optional(),
   trackingNumber: z.string().nullable().optional(),
+});
+
+export const categorySchema = z.object({
+  name: z.string().min(1),
+  slug: z
+    .string()
+    .min(1)
+    .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Use lowercase letters, numbers, and hyphens only."),
+  description: z.string().optional(),
+  image: z.string().optional(),
+});
+
+export const userRoleSchema = z.object({
+  role: z.enum(["CUSTOMER", "ADMIN"]),
 });

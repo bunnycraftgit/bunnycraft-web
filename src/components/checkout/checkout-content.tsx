@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { toast } from "sonner";
 import { LoaderCircleIcon, ShoppingBagIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -20,8 +21,10 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import { DeliveryEstimate } from "@/components/shop/delivery-estimate";
 import { cartLineTotal, useCartStore } from "@/store/cart-store";
 import { formatCurrency } from "@/lib/utils";
+import { loadRazorpayScript } from "@/lib/load-razorpay-script";
 import { shippingAddressSchema, type ShippingAddressInput } from "@/lib/validations/order";
 
 const FREE_SHIPPING_THRESHOLD = 75;
@@ -35,6 +38,7 @@ export function CheckoutContent() {
   const lines = useCartStore((s) => s.lines);
   const couponCode = useCartStore((s) => s.couponCode);
   const clearCart = useCartStore((s) => s.clear);
+  const removeLine = useCartStore((s) => s.removeLine);
 
   const [guestEmail, setGuestEmail] = React.useState("");
   const [saveAddress, setSaveAddress] = React.useState(true);
@@ -88,7 +92,9 @@ export function CheckoutContent() {
   async function onSubmit(shipping: ShippingAddressInput) {
     setError(null);
     if (status !== "authenticated" && !guestEmail.trim()) {
-      setError("Enter an email address so we can send your order confirmation.");
+      const message = "Enter an email address so we can send your order confirmation.";
+      setError(message);
+      toast.error(message);
       return;
     }
 
@@ -122,12 +128,66 @@ export function CheckoutContent() {
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Something went wrong.");
+      if (!res.ok) {
+        if (data.invalidProductIds?.length || data.invalidFilamentIds?.length) {
+          const invalidIds = new Set<string>([
+            ...(data.invalidProductIds ?? []),
+            ...(data.invalidFilamentIds ?? []),
+          ]);
+          for (const line of lines) {
+            const id = line.kind === "product" ? line.productId : line.filamentId;
+            if (invalidIds.has(id)) removeLine(line.id);
+          }
+        }
+        throw new Error(data.error ?? "Something went wrong.");
+      }
+
+      await loadRazorpayScript();
+      await new Promise<void>((resolve, reject) => {
+        const rzp = new window.Razorpay({
+          key: data.keyId,
+          amount: data.amount,
+          currency: data.currency,
+          name: "BunnyCraft",
+          description: `Order #${String(data.orderId).slice(-8).toUpperCase()}`,
+          order_id: data.razorpayOrderId,
+          prefill: {
+            name: data.customerName,
+            email: data.customerEmail ?? undefined,
+            contact: data.customerPhone ?? undefined,
+          },
+          theme: { color: "#171717" },
+          handler: async (response) => {
+            try {
+              const verifyRes = await fetch(`/api/orders/${data.orderId}/verify`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  razorpayOrderId: response.razorpay_order_id,
+                  razorpayPaymentId: response.razorpay_payment_id,
+                  razorpaySignature: response.razorpay_signature,
+                }),
+              });
+              const verifyData = await verifyRes.json();
+              if (!verifyRes.ok) throw new Error(verifyData.error ?? "Payment verification failed.");
+              resolve();
+            } catch (err) {
+              reject(err instanceof Error ? err : new Error("Payment verification failed."));
+            }
+          },
+          modal: {
+            ondismiss: () => reject(new Error("Payment was cancelled.")),
+          },
+        });
+        rzp.open();
+      });
 
       clearCart();
-      router.push(`/checkout/confirmation/${data.orderId}`);
+      router.push(`/bunnycraft-checkout/confirmation/${data.orderId}`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
+      const message = err instanceof Error ? err.message : "Something went wrong. Please try again.";
+      setError(message);
+      toast.error(message);
     } finally {
       setSubmitting(false);
     }
@@ -166,7 +226,7 @@ export function CheckoutContent() {
                   />
                   <p className="mt-2 text-xs text-muted-foreground">
                     Have an account?{" "}
-                    <Link href="/login?callbackUrl=/checkout" className="font-medium text-primary hover:underline">
+                    <Link href="/login?callbackUrl=/bunnycraft-checkout" className="font-medium text-primary hover:underline">
                       Sign in
                     </Link>{" "}
                     to check out faster.
@@ -295,8 +355,8 @@ export function CheckoutContent() {
               </div>
 
               <div className="rounded-2xl border border-border bg-muted/40 p-5 text-sm text-muted-foreground">
-                Payment is simulated in this build — no card details are collected and no charge
-                occurs. Your order will be created with a “Pending Payment” status.
+                You&apos;ll be redirected to Razorpay&apos;s secure checkout to pay by card, UPI, or
+                netbanking.
               </div>
 
               {error && <p className="text-sm font-medium text-destructive">{error}</p>}
@@ -347,6 +407,15 @@ export function CheckoutContent() {
             <span className="font-heading text-lg font-semibold">Estimated Total</span>
             <span className="font-heading text-xl font-bold">{formatCurrency(estimatedTotal)}</span>
           </div>
+
+          <Separator className="my-4" />
+          <DeliveryEstimate
+            items={lines.map((l) =>
+              l.kind === "product"
+                ? { kind: "PRODUCT" as const }
+                : { kind: "CUSTOM" as const, estPrintHours: l.estPrintHours }
+            )}
+          />
 
           <Button
             type="button"

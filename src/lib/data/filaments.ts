@@ -59,6 +59,7 @@ export async function getPricingSettings(): Promise<PricingSettingsValues> {
       finishingCostFlat: Number(settings.finishingCostFlat),
       infillFactor: Number(settings.infillFactor),
       shapeFactor: Number(settings.shapeFactor),
+      minimumPrice: Number(settings.minimumPrice),
     };
   } catch (err) {
     console.warn(

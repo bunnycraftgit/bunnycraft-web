@@ -78,6 +78,11 @@ export function PricingSettingsForm({ initial }: { initial: PricingSettingsValue
           "Fraction accounting for non-cuboid model shapes.",
           "0.01"
         )}
+        {field(
+          "minimumPrice",
+          "Minimum price ($)",
+          "Price floor for a single custom print, even if the computed cost is lower."
+        )}
       </div>
       <Button type="submit" disabled={saving} className="w-fit">
         {saving && <LoaderCircleIcon className="animate-spin" />}

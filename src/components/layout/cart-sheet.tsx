@@ -143,10 +143,10 @@ export function CartSheet({
               </p>
               <div className="grid grid-cols-2 gap-2">
                 <Button asChild variant="outline" onClick={() => onOpenChange(false)}>
-                  <Link href="/cart">View Cart</Link>
+                  <Link href="/bunnycraft-cart">View Cart</Link>
                 </Button>
                 <Button asChild onClick={() => onOpenChange(false)}>
-                  <Link href="/checkout">Checkout</Link>
+                  <Link href="/bunnycraft-checkout">Checkout</Link>
                 </Button>
               </div>
             </SheetFooter>
