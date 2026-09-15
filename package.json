@@ -11,19 +11,16 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "postinstall": "prisma generate",
-    "db:push": "prisma db push",
-    "db:migrate": "prisma migrate dev",
-    "db:seed": "prisma db seed",
-    "db:studio": "prisma studio",
+    "db:push": "npm run db:push -w @bunnycraft/db",
+    "db:migrate": "npm run db:migrate -w @bunnycraft/db",
+    "db:seed": "npm run db:seed -w @bunnycraft/db",
+    "db:studio": "npm run db:studio -w @bunnycraft/db",
     "dev:storefront": "npm run dev -w @bunnycraft/storefront",
     "dev:admin": "npm run dev -w @bunnycraft/admin",
     "dev:zones": "concurrently -n storefront,admin -c blue,magenta \"npm:dev:storefront\" \"npm:dev:admin\""
   },
-  "prisma": {
-    "seed": "tsx prisma/seed.ts"
-  },
   "dependencies": {
+    "@bunnycraft/db": "*",
     "@hookform/resolvers": "^5.5.7",
     "@prisma/client": "^6.19.3",
     "@radix-ui/react-accordion": "^1.2.20",

@@ -1,5 +1,10 @@
 generator client {
   provider = "prisma-client-js"
+  // Explicit output (Prisma's recommended monorepo pattern) so the generated
+  // client's location is deterministic rather than dependent on npm's
+  // hoisting algorithm — lands in the repo root's node_modules, reachable
+  // by every workspace package/app.
+  output   = "../../../node_modules/.prisma/client"
 }
 
 datasource db {
@@ -53,6 +58,19 @@ model User {
   orders        Order[]
   wishlistItems WishlistItem[]
   reviews       Review[]
+}
+
+// Deliberately separate from User — admin and customer accounts share no
+// table, no relation, and (per the Multi-Zones auth split) no session/cookie
+// namespace either. No self-service signup: rows only ever get created via
+// the seed script. See lib/auth.ts in the admin app.
+model AdminUser {
+  id           String   @id @default(cuid())
+  name         String?
+  email        String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 }
 
 model Category {

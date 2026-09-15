@@ -1,7 +1,8 @@
 import { PrismaClient, DiscountType, Role } from "@prisma/client";
 import bcrypt from "bcryptjs";
 
-import { CATEGORIES, FILAMENTS, PRODUCTS, REVIEW_POOL, img, printImage } from "../src/lib/catalog-data";
+// TODO(Phase 3): switch to "@bunnycraft/shared" once catalog-data.ts moves there.
+import { CATEGORIES, FILAMENTS, PRODUCTS, REVIEW_POOL, img, printImage } from "../../../src/lib/catalog-data";
 
 const prisma = new PrismaClient();
 
@@ -147,8 +148,21 @@ async function main() {
     },
   });
 
+  console.log("Seeding admin users...");
+  // Separate table from User entirely — this is the only way an admin
+  // account gets created (no self-service signup in the admin app).
+  await prisma.adminUser.upsert({
+    where: { email: "admin@bunnycraft.com" },
+    update: {},
+    create: {
+      name: "BunnyCraft Admin",
+      email: "admin@bunnycraft.com",
+      passwordHash: adminPassword,
+    },
+  });
+
   console.log("\nSeed complete.");
-  console.log("  Admin login:    admin@bunnycraft.com / Admin123!");
+  console.log("  Admin login:    admin@bunnycraft.com / Admin123! (AdminUser table)");
   console.log("  Customer login: demo@bunnycraft.com / Demo1234!");
 }
 
