@@ -19,9 +19,13 @@
       }
     ],
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*", "../../packages/shared/src/*"]
     }
   },
+  "files": [
+    "../../packages/shared/src/types/next-auth.d.ts",
+    "../../packages/shared/src/types/razorpay.d.ts"
+  ],
   "include": [
     "next-env.d.ts",
     "**/*.ts",
