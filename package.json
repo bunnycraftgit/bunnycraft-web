@@ -2,6 +2,10 @@
   "name": "bunnycraft",
   "version": "0.1.0",
   "private": true,
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -11,7 +15,10 @@
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate dev",
     "db:seed": "prisma db seed",
-    "db:studio": "prisma studio"
+    "db:studio": "prisma studio",
+    "dev:storefront": "npm run dev -w @bunnycraft/storefront",
+    "dev:admin": "npm run dev -w @bunnycraft/admin",
+    "dev:zones": "concurrently -n storefront,admin -c blue,magenta \"npm:dev:storefront\" \"npm:dev:admin\""
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
@@ -62,6 +69,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@types/three": "^0.185.1",
+    "concurrently": "^9.2.1",
     "eslint": "^9",
     "eslint-config-next": "16.2.12",
     "prisma": "^6.19.3",

@@ -16,7 +16,9 @@ export type DeliveryWindow = { from: Date; to: Date };
 
 function productionDaysForItem(item: DeliveryEstimateItem): number {
   if (item.kind === "CUSTOM") {
-    const printDays = Math.ceil((item.estPrintHours ?? 0) / HOURS_PER_PRODUCTION_DAY);
+    const printDays = Math.ceil(
+      (item.estPrintHours ?? 0) / HOURS_PER_PRODUCTION_DAY,
+    );
     return Math.max(PRODUCT_PREP_DAYS, printDays + CUSTOM_QA_BUFFER_DAYS);
   }
   return PRODUCT_PREP_DAYS;
@@ -30,10 +32,12 @@ function addDays(date: Date, days: number): Date {
 
 export function estimateDeliveryWindow(
   items: DeliveryEstimateItem[],
-  from: Date = new Date()
+  from: Date = new Date(),
 ): DeliveryWindow {
   const maxProductionDays =
-    items.length > 0 ? Math.max(...items.map(productionDaysForItem)) : PRODUCT_PREP_DAYS;
+    items.length > 0
+      ? Math.max(...items.map(productionDaysForItem))
+      : PRODUCT_PREP_DAYS;
 
   return {
     from: addDays(from, maxProductionDays + SHIPPING_TRANSIT_MIN_DAYS),
@@ -41,9 +45,15 @@ export function estimateDeliveryWindow(
   };
 }
 
-export function formatDeliveryWindow(window: DeliveryWindow, locale = "en-IN"): string {
+export function formatDeliveryWindow(
+  window: DeliveryWindow,
+  locale = "en-IN",
+): string {
   const sameYear = window.from.getFullYear() === window.to.getFullYear();
-  const fromStr = window.from.toLocaleDateString(locale, { month: "short", day: "numeric" });
+  const fromStr = window.from.toLocaleDateString(locale, {
+    month: "short",
+    day: "numeric",
+  });
   const toStr = window.to.toLocaleDateString(locale, {
     month: "short",
     day: "numeric",
