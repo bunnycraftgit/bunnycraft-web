@@ -1,11 +1,22 @@
 import { NextResponse } from "next/server";
 import type { NextAuthConfig } from "next-auth";
 
+// Each zone (storefront vs admin) sets its own AUTH_COOKIE_PREFIX so the two
+// apps get distinct session cookies — logging into the admin panel must not
+// also authenticate the storefront, and vice versa, even though both zones
+// share this same auth config and run on the same domain.
+const cookiePrefix = process.env.AUTH_COOKIE_PREFIX ?? "authjs";
+
 // Edge-safe config shared by middleware and the full auth.ts. Must not import
 // Prisma (or anything Node-only) — middleware runs on the edge runtime and
 // only needs to decode the session JWT, not hit the database.
 export const authConfig: NextAuthConfig = {
   trustHost: true,
+  cookies: {
+    sessionToken: { name: `${cookiePrefix}.session-token` },
+    callbackUrl: { name: `${cookiePrefix}.callback-url` },
+    csrfToken: { name: `${cookiePrefix}.csrf-token` },
+  },
   pages: {
     signIn: "/login",
   },

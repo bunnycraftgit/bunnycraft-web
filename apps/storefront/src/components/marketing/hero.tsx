@@ -67,8 +67,7 @@ export function Hero() {
             />
           </motion.div>
         </AnimatePresence>
-        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/70 to-background/20" />
-        <div className="absolute inset-0 bg-gradient-to-r from-background/80 via-background/20 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/50 to-black/25" />
       </div>
 
       <div className="container-page relative z-10 py-24">
@@ -78,14 +77,14 @@ export function Hero() {
           transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
           className="max-w-2xl"
         >
-          <span className="mb-5 inline-flex items-center gap-1.5 rounded-none border border-border bg-card/80 px-3.5 py-1.5 text-xs font-medium text-muted-foreground backdrop-blur">
+          <span className="mb-5 inline-flex items-center gap-1.5 rounded-none border border-white/20 bg-white/10 px-3.5 py-1.5 text-xs font-medium text-white backdrop-blur">
             <SparklesIcon className="size-3.5 text-primary" />
             Precision 3D printing, made to order
           </span>
-          <h1 className="text-balance font-heading text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl">
+          <h1 className="text-balance font-heading text-4xl font-bold tracking-tight text-white sm:text-5xl lg:text-6xl">
             Bring Your Ideas to Life with Custom 3D Printing
           </h1>
-          <p className="mt-5 max-w-lg text-balance text-lg text-muted-foreground">
+          <p className="mt-5 max-w-lg text-balance text-lg text-white/80">
             Upload your design, choose your filament, get an instant price estimate, and order
             with confidence.
           </p>

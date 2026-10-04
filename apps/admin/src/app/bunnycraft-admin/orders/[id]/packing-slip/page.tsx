@@ -3,8 +3,8 @@ import { notFound, redirect } from "next/navigation";
 
 import { PrintButton } from "@/components/admin/print-button";
 import { auth } from "@/lib/auth";
-import { prisma } from "@bunnycraft/db";
 import { formatCurrency } from "@/lib/utils";
+import { prisma } from "@bunnycraft/db";
 
 export const metadata: Metadata = { title: "Packing Slip" };
 
@@ -36,7 +36,9 @@ export default async function PackingSlipPage({
       <div className="mb-6 grid grid-cols-2 gap-6 text-sm">
         <div>
           <p className="font-semibold">Order</p>
-          <p className="text-muted-foreground">#{order.id.slice(-8).toUpperCase()}</p>
+          <p className="text-muted-foreground">
+            #{order.id.slice(-8).toUpperCase()}
+          </p>
           <p className="text-muted-foreground">
             {order.createdAt.toLocaleDateString("en-IN", {
               year: "numeric",

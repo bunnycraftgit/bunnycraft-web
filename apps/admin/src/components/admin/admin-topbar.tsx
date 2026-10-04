@@ -5,6 +5,7 @@ import { signOut } from "next-auth/react";
 import { LogOutIcon, StoreIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { ThemeToggle } from "@/components/admin/theme-toggle";
 
 export function AdminTopbar({ adminName }: { adminName: string }) {
   return (
@@ -15,6 +16,7 @@ export function AdminTopbar({ adminName }: { adminName: string }) {
         </Link>
         <div className="flex items-center gap-2">
           <span className="hidden text-xs text-muted-foreground sm:inline">{adminName}</span>
+          <ThemeToggle />
           <Button asChild variant="ghost" size="sm">
             <Link href="/" target="_blank" rel="noreferrer">
               <StoreIcon /> View store

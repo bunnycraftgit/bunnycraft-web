@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect } from "react";
-import Link from "next/link";
 import { AlertTriangleIcon, RefreshCwIcon } from "lucide-react";
+import Link from "next/link";
+import { useEffect } from "react";
 
 import { Button } from "@/components/ui/button";
 
@@ -24,7 +24,8 @@ export default function AdminError({
       </div>
       <h1 className="text-2xl font-bold">Something went wrong</h1>
       <p className="max-w-sm text-muted-foreground">
-        The admin panel hit an unexpected error. You can try again, or head back to the dashboard.
+        The admin panel hit an unexpected error. You can try again, or head back
+        to the dashboard.
       </p>
       <div className="flex gap-3">
         <Button onClick={reset}>

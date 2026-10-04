@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 
 import { CategoriesManager } from "@/components/admin/categories-manager";
+import { paginationMeta, parsePage, parseQuery } from "@/lib/pagination";
 import { prisma } from "@bunnycraft/db";
-import { parsePage, parseQuery, paginationMeta } from "@/lib/pagination";
 
 export const metadata: Metadata = { title: "Admin — Categories" };
 
@@ -38,5 +38,10 @@ export default async function AdminCategoriesPage({
     productCount: c._count.products,
   }));
 
-  return <CategoriesManager initial={plain} meta={paginationMeta(page, total, PAGE_SIZE)} />;
+  return (
+    <CategoriesManager
+      initial={plain}
+      meta={paginationMeta(page, total, PAGE_SIZE)}
+    />
+  );
 }

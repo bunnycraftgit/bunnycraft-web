@@ -1,8 +1,7 @@
 import { PrismaClient, DiscountType, Role } from "@prisma/client";
 import bcrypt from "bcryptjs";
 
-// TODO(Phase 3): switch to "@bunnycraft/shared" once catalog-data.ts moves there.
-import { CATEGORIES, FILAMENTS, PRODUCTS, REVIEW_POOL, img, printImage } from "../../../src/lib/catalog-data";
+import { CATEGORIES, FILAMENTS, PRODUCTS, REVIEW_POOL, img, printImage } from "@bunnycraft/shared/src/lib/catalog-data";
 
 const prisma = new PrismaClient();
 
