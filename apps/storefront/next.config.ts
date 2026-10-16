@@ -11,8 +11,24 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "picsum.photos" },
       { protocol: "https", hostname: "i.pravatar.cc" },
       { protocol: "https", hostname: "images.unsplash.com" },
+      { protocol: "https", hostname: "lh3.googleusercontent.com" },
     ],
     unoptimized: true,
+  },
+  // When the admin zone has its own public hostname (ADMIN_PUBLIC_URL, e.g.
+  // https://admin.example.com), send /bunnycraft-admin visitors there instead
+  // of proxying. Proxying only forwards admin *pages* — the admin app's own
+  // /api/* calls (login included) would land on this app instead.
+  async redirects() {
+    const adminPublicUrl = process.env.ADMIN_PUBLIC_URL?.replace(/\/$/, "");
+    if (!adminPublicUrl) return [];
+    return [
+      {
+        source: "/bunnycraft-admin/:path*",
+        destination: `${adminPublicUrl}/bunnycraft-admin/:path*`,
+        permanent: false,
+      },
+    ];
   },
   async rewrites() {
     return [
