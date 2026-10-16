@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@bunnycraft/db";
 import { createReviewSchema } from "@/lib/validations/review";
+import { refreshProductRating } from "@/lib/data/reviews";
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
@@ -39,18 +40,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     },
   });
 
-  const agg = await prisma.review.aggregate({
-    where: { productId },
-    _avg: { rating: true },
-    _count: true,
-  });
-  await prisma.product.update({
-    where: { id: productId },
-    data: {
-      rating: Math.round((agg._avg.rating ?? 0) * 10) / 10,
-      reviewCount: agg._count,
-    },
-  });
+  await refreshProductRating(productId);
 
   return NextResponse.json(review);
 }

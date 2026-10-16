@@ -32,7 +32,25 @@ export const productSchema = z.object({
   tags: z.array(z.string()).optional(),
   stock: z.number().int().nonnegative(),
   featured: z.boolean().optional(),
+  status: z.enum(["LIVE", "SOLD_OUT", "COMING_SOON"]).optional(),
   categoryId: z.string().min(1),
+});
+
+export const adminReviewSchema = z.object({
+  productId: z.string().min(1, "Choose a product."),
+  authorName: z.string().trim().min(1, "Customer name is required.").max(100),
+  rating: z.number().int().min(1).max(5),
+  comment: z.string().trim().min(1, "Review text is required.").max(2000),
+  photoUrl: z.string().min(1).nullable().optional(),
+});
+
+export const testimonialSchema = z.object({
+  name: z.string().trim().min(1, "Name is required.").max(100),
+  place: z.string().trim().max(100).nullable().optional(),
+  photoUrl: z.string().min(1).nullable().optional(),
+  rating: z.number().int().min(1).max(5),
+  comment: z.string().trim().min(1, "Review text is required.").max(2000),
+  published: z.boolean().optional(),
 });
 
 export const couponSchema = z.object({

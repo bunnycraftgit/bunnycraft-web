@@ -13,14 +13,17 @@ import { QuickViewDialog } from "@/components/shop/quick-view-dialog";
 import { useWishlist } from "@/hooks/use-wishlist";
 import { useCartStore } from "@/store/cart-store";
 import { cn, formatCurrency } from "@/lib/utils";
+import { PRODUCT_STATUS_LABEL, isPurchasable } from "@/lib/product-status";
 import type { PlainProduct } from "@/lib/data/products";
 
 export function ProductCard({ product }: { product: PlainProduct }) {
   const { isWishlisted, toggle } = useWishlist(product.id);
   const addProduct = useCartStore((s) => s.addProduct);
   const [quickViewOpen, setQuickViewOpen] = React.useState(false);
+  const purchasable = isPurchasable(product.status);
 
   function handleAddToCart() {
+    if (!purchasable) return;
     addProduct({
       productId: product.id,
       slug: product.slug,
@@ -43,14 +46,28 @@ export function ProductCard({ product }: { product: PlainProduct }) {
               alt={product.name}
               fill
               sizes="(min-width: 1024px) 25vw, (min-width: 640px) 33vw, 50vw"
-              className="object-cover transition-transform duration-500 group-hover:scale-105"
+              className={cn(
+                "object-cover transition-transform duration-500 group-hover:scale-105",
+                product.status === "SOLD_OUT" && "opacity-60 grayscale"
+              )}
             />
           </Link>
 
-          {product.compareAtPrice && (
-            <Badge variant="accent" className="absolute top-3 left-3">
-              Sale
+          {!purchasable ? (
+            <Badge
+              className={cn(
+                "absolute top-3 left-3",
+                product.status === "SOLD_OUT" && "bg-destructive text-white"
+              )}
+            >
+              {PRODUCT_STATUS_LABEL[product.status]}
             </Badge>
+          ) : (
+            product.compareAtPrice && (
+              <Badge variant="accent" className="absolute top-3 left-3">
+                Sale
+              </Badge>
+            )
           )}
 
           <button
@@ -68,8 +85,9 @@ export function ProductCard({ product }: { product: PlainProduct }) {
               size="sm"
               className="flex-1"
               onClick={handleAddToCart}
+              disabled={!purchasable}
             >
-              <ShoppingBagIcon /> Add to Cart
+              <ShoppingBagIcon /> {purchasable ? "Add to Cart" : PRODUCT_STATUS_LABEL[product.status]}
             </Button>
             <Button
               size="icon-sm"

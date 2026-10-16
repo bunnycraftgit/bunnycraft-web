@@ -25,6 +25,12 @@ enum OrderStatus {
   CANCELLED
 }
 
+enum ProductStatus {
+  LIVE
+  SOLD_OUT
+  COMING_SOON
+}
+
 enum DiscountType {
   PERCENT
   FIXED
@@ -85,21 +91,22 @@ model Category {
 }
 
 model Product {
-  id             String   @id @default(cuid())
+  id             String        @id @default(cuid())
   name           String
-  slug           String   @unique
-  description    String   @db.Text
-  price          Decimal  @db.Decimal(10, 2)
-  compareAtPrice Decimal? @db.Decimal(10, 2)
+  slug           String        @unique
+  description    String        @db.Text
+  price          Decimal       @db.Decimal(10, 2)
+  compareAtPrice Decimal?      @db.Decimal(10, 2)
   images         Json
   material       String?
   tags           Json?
-  stock          Int      @default(25)
-  rating         Decimal  @default(0) @db.Decimal(2, 1)
-  reviewCount    Int      @default(0)
-  featured       Boolean  @default(false)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  stock          Int           @default(25)
+  rating         Decimal       @default(0) @db.Decimal(2, 1)
+  reviewCount    Int           @default(0)
+  featured       Boolean       @default(false)
+  status         ProductStatus @default(LIVE)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
 
   categoryId String
   category   Category @relation(fields: [categoryId], references: [id])
@@ -237,6 +244,20 @@ model Review {
   createdAt  DateTime @default(now())
 
   @@index([productId])
+}
+
+// Customer testimonials added by hand in the admin panel and shown on the
+// homepage (separate from per-product Review rows).
+model Testimonial {
+  id        String   @id @default(cuid())
+  name      String
+  place     String?
+  photoUrl  String?
+  rating    Int      @default(5)
+  comment   String   @db.Text
+  published Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Coupon {

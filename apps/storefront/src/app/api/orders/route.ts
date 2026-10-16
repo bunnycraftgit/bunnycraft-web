@@ -70,6 +70,20 @@ export async function POST(request: Request) {
     );
   }
 
+  const unavailableProducts = products.filter((p) => p.status !== "LIVE");
+  if (unavailableProducts.length) {
+    return NextResponse.json(
+      {
+        error: `${unavailableProducts.map((p) => p.name).join(", ")} ${
+          unavailableProducts.length === 1 ? "isn't" : "aren't"
+        } available right now and ${unavailableProducts.length === 1 ? "was" : "were"} removed from your cart.`,
+        invalidProductIds: unavailableProducts.map((p) => p.id),
+        invalidFilamentIds: [],
+      },
+      { status: 400 }
+    );
+  }
+
   let subtotal = 0;
   const itemsToCreate: Prisma.OrderItemCreateWithoutOrderInput[] = [];
 

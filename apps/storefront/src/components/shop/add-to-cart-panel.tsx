@@ -8,14 +8,17 @@ import { Button } from "@/components/ui/button";
 import { useWishlist } from "@/hooks/use-wishlist";
 import { useCartStore } from "@/store/cart-store";
 import { cn } from "@/lib/utils";
+import { PRODUCT_STATUS_LABEL, isPurchasable } from "@/lib/product-status";
 import type { PlainProduct } from "@/lib/data/products";
 
 export function AddToCartPanel({ product }: { product: PlainProduct }) {
   const [quantity, setQuantity] = React.useState(1);
   const addProduct = useCartStore((s) => s.addProduct);
   const { isWishlisted, toggle } = useWishlist(product.id);
+  const purchasable = isPurchasable(product.status) && product.stock > 0;
 
   function handleAddToCart() {
+    if (!purchasable) return;
     addProduct({
       productId: product.id,
       slug: product.slug,
@@ -48,8 +51,13 @@ export function AddToCartPanel({ product }: { product: PlainProduct }) {
         </button>
       </div>
 
-      <Button size="lg" className="flex-1" onClick={handleAddToCart} disabled={product.stock === 0}>
-        <ShoppingBagIcon /> {product.stock === 0 ? "Out of Stock" : "Add to Cart"}
+      <Button size="lg" className="flex-1" onClick={handleAddToCart} disabled={!purchasable}>
+        <ShoppingBagIcon />{" "}
+        {!isPurchasable(product.status)
+          ? PRODUCT_STATUS_LABEL[product.status]
+          : product.stock === 0
+            ? "Out of Stock"
+            : "Add to Cart"}
       </Button>
 
       <Button size="lg" variant="outline" onClick={toggle} aria-label="Toggle wishlist">

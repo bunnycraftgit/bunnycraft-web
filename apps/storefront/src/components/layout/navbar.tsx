@@ -68,6 +68,11 @@ export function Navbar() {
 
   if (pathname?.startsWith("/bunnycraft-admin")) return null;
 
+  // "/shop" stays highlighted on product pages (/shop/[slug]) too.
+  function isActive(href: string) {
+    return pathname === href || pathname?.startsWith(`${href}/`);
+  }
+
   return (
     <header
       className={cn(
@@ -103,8 +108,19 @@ export function Navbar() {
             </DropdownMenuContent>
           </DropdownMenu>
           {NAV_LINKS.map((link) => (
-            <Button key={link.href} asChild variant="ghost" size="sm" className="text-sm font-medium">
-              <Link href={link.href}>{link.label}</Link>
+            <Button
+              key={link.href}
+              asChild
+              variant="ghost"
+              size="sm"
+              className={cn(
+                "text-sm font-medium",
+                isActive(link.href) && "bg-muted text-primary hover:text-primary"
+              )}
+            >
+              <Link href={link.href} aria-current={isActive(link.href) ? "page" : undefined}>
+                {link.label}
+              </Link>
             </Button>
           ))}
         </nav>
@@ -112,8 +128,13 @@ export function Navbar() {
         <SearchAutocomplete className="ml-auto hidden max-w-sm flex-1 md:block" />
 
         <div className="ml-auto flex items-center gap-1 md:ml-2">
-          <Button asChild variant="ghost" size="icon" className="hidden sm:inline-flex">
-            <Link href="/wishlist" aria-label="Wishlist">
+          <Button
+            asChild
+            variant="ghost"
+            size="icon"
+            className={cn("hidden sm:inline-flex", isActive("/wishlist") && "bg-muted text-primary")}
+          >
+            <Link href="/wishlist" aria-label="Wishlist" aria-current={isActive("/wishlist") ? "page" : undefined}>
               <HeartIcon className="size-[18px]" />
             </Link>
           </Button>
@@ -197,7 +218,11 @@ export function Navbar() {
                     key={link.href}
                     href={link.href}
                     onClick={() => setMobileOpen(false)}
-                    className="rounded-lg px-3 py-2.5 text-sm font-medium hover:bg-muted"
+                    aria-current={isActive(link.href) ? "page" : undefined}
+                    className={cn(
+                      "rounded-lg px-3 py-2.5 text-sm font-medium hover:bg-muted",
+                      isActive(link.href) && "bg-muted text-primary"
+                    )}
                   >
                     {link.label}
                   </Link>
@@ -205,7 +230,11 @@ export function Navbar() {
                 <Link
                   href="/wishlist"
                   onClick={() => setMobileOpen(false)}
-                  className="rounded-lg px-3 py-2.5 text-sm font-medium hover:bg-muted"
+                  aria-current={isActive("/wishlist") ? "page" : undefined}
+                  className={cn(
+                    "rounded-lg px-3 py-2.5 text-sm font-medium hover:bg-muted",
+                    isActive("/wishlist") && "bg-muted text-primary"
+                  )}
                 >
                   Wishlist
                 </Link>

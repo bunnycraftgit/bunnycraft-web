@@ -59,6 +59,7 @@ export default async function AdminProductsPage({
     tags: Array.isArray(p.tags) ? (p.tags as string[]) : [],
     stock: p.stock,
     featured: p.featured,
+    status: p.status,
     categoryId: p.categoryId,
     category: { name: p.category.name },
   }));

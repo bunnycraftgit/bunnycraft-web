@@ -6,6 +6,7 @@ import { ChevronLeftIcon, ChevronRightIcon, ExternalLinkIcon, QuoteIcon } from "
 
 import { Button } from "@/components/ui/button";
 import { StarRating } from "@/components/shop/star-rating";
+import { ShareReviewDialog } from "@/components/marketing/share-review-dialog";
 
 type Testimonial = {
   id: string;
@@ -13,6 +14,7 @@ type Testimonial = {
   rating: number;
   comment: string;
   photoUrl: string | null;
+  place?: string | null;
   // Google reviews only — Google requires linking back to the reviewer.
   authorUrl?: string | null;
   relativeTime?: string | null;
@@ -37,11 +39,9 @@ export function Testimonials({
     el.scrollBy({ left: dir * width, behavior: "smooth" });
   }
 
-  if (testimonials.length === 0) return null;
-
   return (
     <section className="container-page py-20">
-      <div className="mb-10 flex items-end justify-between gap-4">
+      <div className="mb-10 flex flex-wrap items-end justify-between gap-4">
         <div>
           <h2 className="text-3xl font-bold sm:text-4xl">What Customers Are Saying</h2>
           {google ? (
@@ -66,15 +66,26 @@ export function Testimonials({
             <p className="mt-2 text-muted-foreground">Real prints, real feedback.</p>
           )}
         </div>
-        <div className="hidden gap-2 sm:flex">
-          <Button variant="outline" size="icon" onClick={() => scrollByCard(-1)} aria-label="Previous">
-            <ChevronLeftIcon className="size-4" />
-          </Button>
-          <Button variant="outline" size="icon" onClick={() => scrollByCard(1)} aria-label="Next">
-            <ChevronRightIcon className="size-4" />
-          </Button>
+        <div className="flex items-center gap-2">
+          <ShareReviewDialog />
+          {testimonials.length > 1 && (
+            <div className="hidden gap-2 sm:flex">
+              <Button variant="outline" size="icon" onClick={() => scrollByCard(-1)} aria-label="Previous">
+                <ChevronLeftIcon className="size-4" />
+              </Button>
+              <Button variant="outline" size="icon" onClick={() => scrollByCard(1)} aria-label="Next">
+                <ChevronRightIcon className="size-4" />
+              </Button>
+            </div>
+          )}
         </div>
       </div>
+
+      {testimonials.length === 0 && (
+        <p className="rounded-2xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
+          No reviews yet — be the first to share your experience!
+        </p>
+      )}
 
       <div
         ref={trackRef}
@@ -114,6 +125,7 @@ export function Testimonials({
                 ) : (
                   <p className="text-sm font-medium">{t.authorName}</p>
                 )}
+                {t.place && <p className="text-xs text-muted-foreground">{t.place}</p>}
                 <div className="flex items-center gap-2">
                   <StarRating rating={t.rating} />
                   {t.relativeTime && (

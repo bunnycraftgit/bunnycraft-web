@@ -84,7 +84,11 @@ export default async function ProductPage({
           )}
           <div className="flex items-center gap-2 text-sm">
             <CheckCircle2Icon className="size-4 text-primary" />
-            {product.stock > 0 ? `${product.stock} in stock, ships in 2-3 days` : "Currently out of stock"}
+            {product.status === "COMING_SOON"
+              ? "Coming soon — check back shortly"
+              : product.status === "SOLD_OUT" || product.stock === 0
+                ? "Currently sold out"
+                : `${product.stock} in stock, ships in 2-3 days`}
           </div>
 
           <Separator className="my-2" />

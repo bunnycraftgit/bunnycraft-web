@@ -17,6 +17,7 @@ import { Badge } from "@/components/ui/badge";
 import { StarRating } from "@/components/shop/star-rating";
 import { useCartStore } from "@/store/cart-store";
 import { formatCurrency } from "@/lib/utils";
+import { PRODUCT_STATUS_LABEL, isPurchasable } from "@/lib/product-status";
 import type { PlainProduct } from "@/lib/data/products";
 
 export function QuickViewDialog({
@@ -29,8 +30,10 @@ export function QuickViewDialog({
   onOpenChange: (open: boolean) => void;
 }) {
   const addProduct = useCartStore((s) => s.addProduct);
+  const purchasable = isPurchasable(product.status);
 
   function handleAddToCart() {
+    if (!purchasable) return;
     addProduct({
       productId: product.id,
       slug: product.slug,
@@ -82,8 +85,8 @@ export function QuickViewDialog({
           )}
 
           <div className="mt-2 flex flex-col gap-2">
-            <Button onClick={handleAddToCart}>
-              <ShoppingBagIcon /> Add to Cart
+            <Button onClick={handleAddToCart} disabled={!purchasable}>
+              <ShoppingBagIcon /> {purchasable ? "Add to Cart" : PRODUCT_STATUS_LABEL[product.status]}
             </Button>
             <Button variant="outline" asChild>
               <Link href={`/shop/${product.slug}`} onClick={() => onOpenChange(false)}>

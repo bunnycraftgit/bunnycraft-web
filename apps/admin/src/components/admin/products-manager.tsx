@@ -39,6 +39,7 @@ import { AdminPagination } from "@/components/admin/admin-pagination";
 import { BulkActionBar } from "@/components/admin/bulk-action-bar";
 import { ProductImageUploader } from "@/components/admin/product-image-uploader";
 import { formatCurrency } from "@/lib/utils";
+import { PRODUCT_STATUSES, PRODUCT_STATUS_LABEL, type ProductStatus } from "@/lib/product-status";
 
 const LOW_STOCK_THRESHOLD = 5;
 
@@ -55,8 +56,15 @@ type Product = {
   tags: string[];
   stock: number;
   featured: boolean;
+  status: ProductStatus;
   categoryId: string;
   category: { name: string };
+};
+
+const STATUS_BADGE: Record<ProductStatus, "success" | "destructive" | "secondary"> = {
+  LIVE: "success",
+  SOLD_OUT: "destructive",
+  COMING_SOON: "secondary",
 };
 type Meta = { page: number; pageCount: number; total: number; pageSize: number };
 
@@ -72,6 +80,7 @@ function emptyForm(categoryId: string) {
     tags: "",
     stock: 25,
     featured: false,
+    status: "LIVE" as ProductStatus,
     categoryId,
   };
 }
@@ -139,6 +148,7 @@ export function ProductsManager({
       tags: p.tags.join(", "),
       stock: p.stock,
       featured: p.featured,
+      status: p.status,
       categoryId: p.categoryId,
     });
     setOpen(true);
@@ -198,6 +208,7 @@ export function ProductsManager({
         tags: p.tags,
         stock: p.stock,
         featured: false,
+        status: p.status,
         categoryId: p.categoryId,
       }),
     });
@@ -208,6 +219,16 @@ export function ProductsManager({
     }
     toast.success("Product duplicated.");
     router.refresh();
+  }
+
+  async function updateStatus(p: Product, status: ProductStatus) {
+    setProducts((prev) => prev.map((x) => (x.id === p.id ? { ...x, status } : x)));
+    const res = await fetch(`/api/admin/products/${p.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status }),
+    }).catch(() => null);
+    if (!res?.ok) toast.error("Couldn't update that product's status.");
   }
 
   async function toggleFeatured(p: Product) {
@@ -347,6 +368,7 @@ export function ProductsManager({
               <TableHead>Category</TableHead>
               <TableHead>Price</TableHead>
               <TableHead>Stock</TableHead>
+              <TableHead>Status</TableHead>
               <TableHead>Featured</TableHead>
               <TableHead />
             </TableRow>
@@ -371,6 +393,22 @@ export function ProductsManager({
                   )}
                 </TableCell>
                 <TableCell>
+                  <Select value={p.status} onValueChange={(v) => updateStatus(p, v as ProductStatus)}>
+                    <SelectTrigger size="sm" className="w-36">
+                      <SelectValue>
+                        <Badge variant={STATUS_BADGE[p.status]}>{PRODUCT_STATUS_LABEL[p.status]}</Badge>
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      {PRODUCT_STATUSES.map((s) => (
+                        <SelectItem key={s} value={s}>
+                          {PRODUCT_STATUS_LABEL[s]}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </TableCell>
+                <TableCell>
                   <Switch checked={p.featured} onCheckedChange={() => toggleFeatured(p)} />
                 </TableCell>
                 <TableCell>
@@ -390,7 +428,7 @@ export function ProductsManager({
             ))}
             {products.length === 0 && (
               <TableRow>
-                <TableCell colSpan={7} className="py-8 text-center text-sm text-muted-foreground">
+                <TableCell colSpan={8} className="py-8 text-center text-sm text-muted-foreground">
                   No products match your filters.
                 </TableCell>
               </TableRow>
@@ -447,6 +485,24 @@ export function ProductsManager({
                   value={form.stock}
                   onChange={(e) => setForm({ ...form, stock: Number(e.target.value) })}
                 />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <Label>Status</Label>
+                <Select
+                  value={form.status}
+                  onValueChange={(v) => setForm({ ...form, status: v as ProductStatus })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PRODUCT_STATUSES.map((s) => (
+                      <SelectItem key={s} value={s}>
+                        {PRODUCT_STATUS_LABEL[s]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="flex flex-col gap-1.5">
                 <Label>Category</Label>

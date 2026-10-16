@@ -2,6 +2,7 @@ import type { Prisma } from "@prisma/client";
 
 import { prisma } from "@bunnycraft/db";
 import { CATEGORIES, PRODUCTS, printImage } from "@/lib/catalog-data";
+import type { ProductStatus } from "@/lib/product-status";
 
 export type PlainProduct = {
   id: string;
@@ -17,6 +18,7 @@ export type PlainProduct = {
   rating: number;
   reviewCount: number;
   featured: boolean;
+  status: ProductStatus;
   categorySlug: string;
   categoryName: string;
 };
@@ -38,6 +40,7 @@ function mapProduct(p: ProductWithCategory): PlainProduct {
     rating: Number(p.rating),
     reviewCount: p.reviewCount,
     featured: p.featured,
+    status: p.status,
     categorySlug: p.category.slug,
     categoryName: p.category.name,
   };
@@ -63,6 +66,7 @@ function fallbackProducts(): PlainProduct[] {
       rating: 4.6,
       reviewCount: 14,
       featured: "featured" in p ? Boolean(p.featured) : false,
+      status: "LIVE" as const,
       categorySlug: category.slug,
       categoryName: category.name,
     };

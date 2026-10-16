@@ -78,3 +78,20 @@ export async function getProductReviews(productId: string): Promise<PlainReview[
     return [];
   }
 }
+
+// Keeps Product.rating / reviewCount (shown on cards) in sync after a review
+// is added or removed.
+export async function refreshProductRating(productId: string) {
+  const agg = await prisma.review.aggregate({
+    where: { productId },
+    _avg: { rating: true },
+    _count: true,
+  });
+  await prisma.product.update({
+    where: { id: productId },
+    data: {
+      rating: Math.round((agg._avg.rating ?? 0) * 10) / 10,
+      reviewCount: agg._count,
+    },
+  });
+}

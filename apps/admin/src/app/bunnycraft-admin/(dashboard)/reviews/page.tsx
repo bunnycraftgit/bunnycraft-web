@@ -21,7 +21,7 @@ export default async function AdminReviewsPage({
     ? { OR: [{ authorName: { contains: q } }, { product: { name: { contains: q } } }] }
     : {};
 
-  const [reviews, total] = await Promise.all([
+  const [reviews, total, products] = await Promise.all([
     prisma.review.findMany({
       where,
       include: { product: { select: { name: true, slug: true } } },
@@ -30,6 +30,7 @@ export default async function AdminReviewsPage({
       take: PAGE_SIZE,
     }),
     prisma.review.count({ where }),
+    prisma.product.findMany({ select: { id: true, name: true }, orderBy: { name: "asc" } }),
   ]);
 
   const plain = reviews.map((r) => ({
@@ -42,5 +43,11 @@ export default async function AdminReviewsPage({
     product: r.product,
   }));
 
-  return <ReviewsManager initial={plain} meta={paginationMeta(page, total, PAGE_SIZE)} />;
+  return (
+    <ReviewsManager
+      initial={plain}
+      products={products}
+      meta={paginationMeta(page, total, PAGE_SIZE)}
+    />
+  );
 }
