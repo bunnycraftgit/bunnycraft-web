@@ -54,9 +54,17 @@ export const pricingSettingsSchema = z.object({
   minimumPrice: z.number().nonnegative(),
 });
 
+export const paymentSettingsSchema = z.object({
+  qrImageUrl: z.string().min(1).nullable(),
+  upiId: z.string().trim().max(100).nullable(),
+  payeeName: z.string().trim().max(100).nullable(),
+});
+
 export const orderUpdateSchema = z.object({
   status: z.enum(["PENDING_PAYMENT", "PROCESSING", "SHIPPED", "DELIVERED", "CANCELLED"]).optional(),
   trackingNumber: z.string().nullable().optional(),
+  // Only ever cleared by an admin (rejecting a screenshot) — never set here.
+  paymentProofUrl: z.null().optional(),
 });
 
 export const categorySchema = z.object({

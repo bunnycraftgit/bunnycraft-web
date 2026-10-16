@@ -7,8 +7,10 @@ import { Separator } from "@/components/ui/separator";
 import { OrderStatusBadge } from "@bunnycraft/shared/src/components/order-status-badge";
 import { OrderTimeline } from "@bunnycraft/shared/src/components/order-timeline";
 import { DeliveryEstimate } from "@bunnycraft/shared/src/components/delivery-estimate";
+import { PaymentPanel } from "@/components/checkout/payment-panel";
 import { auth } from "@/lib/auth";
 import { getOrderById } from "@/lib/data/orders";
+import { getPaymentSettings } from "@/lib/data/payment";
 import { formatCurrency } from "@/lib/utils";
 
 const PENDING_STATUSES = new Set(["PENDING_PAYMENT", "PROCESSING", "SHIPPED"]);
@@ -26,6 +28,8 @@ export default async function OrderDetailPage({
   const { id } = await params;
   const order = await getOrderById(id);
   if (!order || order.userId !== session.user.id) notFound();
+
+  const paymentSettings = order.status === "PENDING_PAYMENT" ? await getPaymentSettings() : null;
 
   return (
     <div className="flex flex-col gap-6">
@@ -51,6 +55,15 @@ export default async function OrderDetailPage({
           })}
         </p>
       </div>
+
+      {paymentSettings && (
+        <PaymentPanel
+          orderId={order.id}
+          total={order.total}
+          paymentProofUrl={order.paymentProofUrl}
+          settings={paymentSettings}
+        />
+      )}
 
       <div className="rounded-2xl border border-border bg-card p-6 shadow-soft">
         <OrderTimeline status={order.status} />

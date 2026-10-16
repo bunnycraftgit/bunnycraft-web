@@ -142,29 +142,42 @@ model PricingSettings {
   updatedAt              DateTime @updatedAt
 }
 
+// Singleton row (id always 1) holding the UPI QR shown at the end of
+// checkout. Edited from the admin Settings page.
+model PaymentSettings {
+  id         Int      @id @default(1)
+  qrImageUrl String?
+  upiId      String?
+  payeeName  String?
+  updatedAt  DateTime @updatedAt
+}
+
 model Order {
-  id                String      @id @default(cuid())
-  userId            String?
-  user              User?       @relation(fields: [userId], references: [id])
-  guestEmail        String?
-  status            OrderStatus @default(PENDING_PAYMENT)
-  subtotal          Decimal     @db.Decimal(10, 2)
-  discountTotal     Decimal     @default(0) @db.Decimal(10, 2)
-  shippingTotal     Decimal     @default(0) @db.Decimal(10, 2)
-  total             Decimal     @db.Decimal(10, 2)
-  couponCode        String?
-  razorpayOrderId   String?     @unique
-  razorpayPaymentId String?
-  shippingName      String
-  shippingLine1     String
-  shippingLine2     String?
-  shippingCity      String
-  shippingState     String
-  shippingZip       String
-  shippingCountry   String
-  trackingNumber    String?
-  createdAt         DateTime    @default(now())
-  updatedAt         DateTime    @updatedAt
+  id                 String      @id @default(cuid())
+  userId             String?
+  user               User?       @relation(fields: [userId], references: [id])
+  guestEmail         String?
+  status             OrderStatus @default(PENDING_PAYMENT)
+  subtotal           Decimal     @db.Decimal(10, 2)
+  discountTotal      Decimal     @default(0) @db.Decimal(10, 2)
+  shippingTotal      Decimal     @default(0) @db.Decimal(10, 2)
+  total              Decimal     @db.Decimal(10, 2)
+  couponCode         String?
+  // Manual UPI payment: customer scans the store QR, pays, and uploads a
+  // screenshot. An admin checks it and moves the order to PROCESSING.
+  paymentProofUrl    String?
+  paymentReference   String?
+  paymentSubmittedAt DateTime?
+  shippingName       String
+  shippingLine1      String
+  shippingLine2      String?
+  shippingCity       String
+  shippingState      String
+  shippingZip        String
+  shippingCountry    String
+  trackingNumber     String?
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
 
   items OrderItem[]
 

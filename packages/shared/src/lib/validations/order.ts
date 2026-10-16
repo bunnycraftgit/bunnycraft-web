@@ -44,13 +44,8 @@ export const trackOrderSchema = z.object({
   email: z.string().email("Enter the email used at checkout."),
 });
 
-export const verifyPaymentSchema = z.object({
-  razorpayOrderId: z.string().min(1),
-  razorpayPaymentId: z.string().min(1),
-  razorpaySignature: z.string().min(1),
-});
+export const paymentReferenceSchema = z.string().trim().max(64).optional();
 
 export type ShippingAddressInput = z.infer<typeof shippingAddressSchema>;
 export type CreateOrderInput = z.infer<typeof createOrderSchema>;
-export type VerifyPaymentInput = z.infer<typeof verifyPaymentSchema>;
 export type TrackOrderInput = z.infer<typeof trackOrderSchema>;

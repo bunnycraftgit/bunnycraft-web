@@ -2,8 +2,16 @@
 
 import * as React from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { AlertTriangleIcon, LoaderCircleIcon, PrinterIcon, RefreshCwIcon } from "lucide-react";
+import {
+  AlertTriangleIcon,
+  CheckIcon,
+  LoaderCircleIcon,
+  PrinterIcon,
+  RefreshCwIcon,
+  XIcon,
+} from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -39,6 +47,9 @@ type FullOrder = {
   shippingZip: string;
   shippingCountry: string;
   trackingNumber: string | null;
+  paymentProofUrl: string | null;
+  paymentReference: string | null;
+  paymentSubmittedAt: string | null;
   guestEmail: string | null;
   user: { name: string | null; email: string } | null;
   items: {
@@ -52,7 +63,9 @@ type FullOrder = {
 };
 
 export function OrderDetailSheet({ orderId, trigger }: { orderId: string; trigger: React.ReactNode }) {
+  const router = useRouter();
   const [open, setOpen] = React.useState(false);
+  const [reviewing, setReviewing] = React.useState(false);
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [order, setOrder] = React.useState<FullOrder | null>(null);
@@ -71,6 +84,29 @@ export function OrderDetailSheet({ orderId, trigger }: { orderId: string; trigge
       toast.error(message);
     } finally {
       setLoading(false);
+    }
+  }
+
+  // Confirming moves the order on to PROCESSING; rejecting clears the
+  // screenshot so the customer is asked to upload a new one.
+  async function reviewPayment(approve: boolean) {
+    setReviewing(true);
+    try {
+      const res = await fetch(`/api/admin/orders/${orderId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(approve ? { status: "PROCESSING" } : { paymentProofUrl: null }),
+      });
+      if (!res.ok) throw new Error();
+      setOrder((prev) =>
+        prev && (approve ? { ...prev, status: "PROCESSING" } : { ...prev, paymentProofUrl: null })
+      );
+      toast.success(approve ? "Payment confirmed — order moved to Processing." : "Screenshot rejected.");
+      router.refresh();
+    } catch {
+      toast.error("Couldn't update this order.");
+    } finally {
+      setReviewing(false);
     }
   }
 
@@ -132,6 +168,49 @@ export function OrderDetailSheet({ orderId, trigger }: { orderId: string; trigge
                 from={new Date(order.createdAt)}
               />
             )}
+
+            <div>
+              <h3 className="mb-2 text-sm font-semibold">Payment</h3>
+              {order.paymentProofUrl ? (
+                <div className="flex flex-col gap-3">
+                  <a href={order.paymentProofUrl} target="_blank" rel="noreferrer" className="block w-fit">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={order.paymentProofUrl}
+                      alt="Customer payment screenshot"
+                      className="max-h-80 rounded-lg border border-border object-contain"
+                    />
+                  </a>
+                  <p className="text-xs text-muted-foreground">
+                    {order.paymentReference && (
+                      <>
+                        Transaction ID: <span className="font-medium text-foreground">{order.paymentReference}</span>
+                        {" · "}
+                      </>
+                    )}
+                    {order.paymentSubmittedAt &&
+                      `Uploaded ${new Date(order.paymentSubmittedAt).toLocaleString("en-IN")}`}
+                  </p>
+                  {order.status === "PENDING_PAYMENT" && (
+                    <div className="flex gap-2">
+                      <Button size="sm" disabled={reviewing} onClick={() => reviewPayment(true)}>
+                        {reviewing ? <LoaderCircleIcon className="animate-spin" /> : <CheckIcon />}
+                        Confirm payment of {formatCurrency(Number(order.total))}
+                      </Button>
+                      <Button size="sm" variant="outline" disabled={reviewing} onClick={() => reviewPayment(false)}>
+                        <XIcon /> Reject
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  {order.status === "PENDING_PAYMENT"
+                    ? "Waiting for the customer to upload a payment screenshot."
+                    : "No payment screenshot on file."}
+                </p>
+              )}
+            </div>
 
             <div>
               <h3 className="mb-2 text-sm font-semibold">Customer</h3>

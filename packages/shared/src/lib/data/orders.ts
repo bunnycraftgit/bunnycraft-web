@@ -32,6 +32,9 @@ export type PlainOrder = {
   shippingZip: string;
   shippingCountry: string;
   trackingNumber: string | null;
+  paymentProofUrl: string | null;
+  paymentReference: string | null;
+  paymentSubmittedAt: string | null;
   createdAt: string;
   items: PlainOrderItem[];
 };
@@ -55,6 +58,9 @@ function mapOrder(order: NonNullable<Awaited<ReturnType<typeof fetchOrder>>>): P
     shippingZip: order.shippingZip,
     shippingCountry: order.shippingCountry,
     trackingNumber: order.trackingNumber,
+    paymentProofUrl: order.paymentProofUrl,
+    paymentReference: order.paymentReference,
+    paymentSubmittedAt: order.paymentSubmittedAt?.toISOString() ?? null,
     createdAt: order.createdAt.toISOString(),
     items: order.items.map((i) => ({
       id: i.id,

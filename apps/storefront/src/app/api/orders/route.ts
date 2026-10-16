@@ -5,7 +5,6 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@bunnycraft/db";
 import { getPricingSettings } from "@/lib/data/filaments";
 import { calculateCustomPrintPrice, round2 } from "@/lib/pricing";
-import { createRazorpayOrder } from "@/lib/payment";
 import { createOrderSchema } from "@/lib/validations/order";
 
 const FREE_SHIPPING_THRESHOLD = 75;
@@ -159,23 +158,6 @@ export async function POST(request: Request) {
     },
   });
 
-  let razorpayOrder;
-  try {
-    razorpayOrder = await createRazorpayOrder(total, order.id);
-  } catch (err) {
-    console.error("[POST /api/orders] Razorpay order creation failed —", err);
-    await prisma.order.delete({ where: { id: order.id } }).catch(() => null);
-    return NextResponse.json(
-      { error: "Couldn't start payment. Please try again in a moment." },
-      { status: 502 }
-    );
-  }
-
-  await prisma.order.update({
-    where: { id: order.id },
-    data: { razorpayOrderId: razorpayOrder.id },
-  });
-
   if (session?.user && saveAddress) {
     await prisma.address.create({
       data: {
@@ -192,14 +174,5 @@ export async function POST(request: Request) {
     });
   }
 
-  return NextResponse.json({
-    orderId: order.id,
-    razorpayOrderId: razorpayOrder.id,
-    amount: razorpayOrder.amount,
-    currency: razorpayOrder.currency,
-    keyId: process.env.RAZORPAY_KEY_ID,
-    customerName: shipping.fullName,
-    customerEmail: session?.user ? undefined : guestEmail,
-    customerPhone: shipping.phone,
-  });
+  return NextResponse.json({ orderId: order.id });
 }

@@ -36,6 +36,7 @@ export default async function AdminOrdersPage({
     total: Number(o.total),
     createdAt: o.createdAt.toISOString(),
     trackingNumber: o.trackingNumber,
+    paymentProofUrl: o.paymentProofUrl,
     shippingName: o.shippingName,
     guestEmail: o.guestEmail,
     user: o.user,

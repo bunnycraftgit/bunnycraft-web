@@ -37,6 +37,7 @@ type AdminOrder = {
   total: number;
   createdAt: string;
   trackingNumber: string | null;
+  paymentProofUrl: string | null;
   shippingName: string;
   guestEmail: string | null;
   user: { name: string | null; email: string } | null;
@@ -242,6 +243,9 @@ export function OrdersManager({ initial, meta }: { initial: AdminOrder[]; meta: 
                       ))}
                     </SelectContent>
                   </Select>
+                  {o.status === "PENDING_PAYMENT" && o.paymentProofUrl && (
+                    <p className="mt-1 text-xs font-medium text-primary">Screenshot to review</p>
+                  )}
                 </TableCell>
                 <TableCell>
                   <Input

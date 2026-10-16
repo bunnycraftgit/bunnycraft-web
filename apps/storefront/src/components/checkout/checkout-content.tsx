@@ -24,7 +24,6 @@ import {
 import { DeliveryEstimate } from "@bunnycraft/shared/src/components/delivery-estimate";
 import { cartLineTotal, useCartStore } from "@/store/cart-store";
 import { formatCurrency } from "@/lib/utils";
-import { loadRazorpayScript } from "@/lib/load-razorpay-script";
 import { shippingAddressSchema, type ShippingAddressInput } from "@/lib/validations/order";
 
 const FREE_SHIPPING_THRESHOLD = 75;
@@ -37,7 +36,6 @@ export function CheckoutContent() {
   const { status } = useSession();
   const lines = useCartStore((s) => s.lines);
   const couponCode = useCartStore((s) => s.couponCode);
-  const clearCart = useCartStore((s) => s.clear);
   const removeLine = useCartStore((s) => s.removeLine);
 
   const [guestEmail, setGuestEmail] = React.useState("");
@@ -142,47 +140,8 @@ export function CheckoutContent() {
         throw new Error(data.error ?? "Something went wrong.");
       }
 
-      await loadRazorpayScript();
-      await new Promise<void>((resolve, reject) => {
-        const rzp = new window.Razorpay({
-          key: data.keyId,
-          amount: data.amount,
-          currency: data.currency,
-          name: "BunnyCraft",
-          description: `Order #${String(data.orderId).slice(-8).toUpperCase()}`,
-          order_id: data.razorpayOrderId,
-          prefill: {
-            name: data.customerName,
-            email: data.customerEmail ?? undefined,
-            contact: data.customerPhone ?? undefined,
-          },
-          theme: { color: "#171717" },
-          handler: async (response) => {
-            try {
-              const verifyRes = await fetch(`/api/orders/${data.orderId}/verify`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  razorpayOrderId: response.razorpay_order_id,
-                  razorpayPaymentId: response.razorpay_payment_id,
-                  razorpaySignature: response.razorpay_signature,
-                }),
-              });
-              const verifyData = await verifyRes.json();
-              if (!verifyRes.ok) throw new Error(verifyData.error ?? "Payment verification failed.");
-              resolve();
-            } catch (err) {
-              reject(err instanceof Error ? err : new Error("Payment verification failed."));
-            }
-          },
-          modal: {
-            ondismiss: () => reject(new Error("Payment was cancelled.")),
-          },
-        });
-        rzp.open();
-      });
-
-      clearCart();
+      // The cart is kept until the payment screenshot is submitted (see
+      // PaymentPanel), so backing out of payment doesn't lose it.
       router.push(`/bunnycraft-checkout/confirmation/${data.orderId}`);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Something went wrong. Please try again.";
@@ -355,8 +314,9 @@ export function CheckoutContent() {
               </div>
 
               <div className="rounded-2xl border border-border bg-muted/40 p-5 text-sm text-muted-foreground">
-                You&apos;ll be redirected to Razorpay&apos;s secure checkout to pay by card, UPI, or
-                netbanking.
+                After you place your order, you&apos;ll see our UPI QR code. Pay the order total
+                with any UPI app and upload a screenshot of the payment — we&apos;ll confirm it and
+                start on your order.
               </div>
 
               {error && <p className="text-sm font-medium text-destructive">{error}</p>}

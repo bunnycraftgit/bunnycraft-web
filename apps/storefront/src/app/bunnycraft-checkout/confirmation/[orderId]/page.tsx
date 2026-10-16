@@ -1,17 +1,19 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { CheckCircle2Icon, PackageIcon } from "lucide-react";
+import { CheckCircle2Icon, PackageIcon, QrCodeIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { OrderStatusBadge } from "@bunnycraft/shared/src/components/order-status-badge";
 import { DeliveryEstimate } from "@bunnycraft/shared/src/components/delivery-estimate";
+import { PaymentPanel } from "@/components/checkout/payment-panel";
 import { auth } from "@/lib/auth";
 import { getOrderById } from "@/lib/data/orders";
+import { getPaymentSettings } from "@/lib/data/payment";
 import { formatCurrency } from "@/lib/utils";
 
-export const metadata: Metadata = { title: "Order Confirmed" };
+export const metadata: Metadata = { title: "Order Placed" };
 
 export default async function OrderConfirmationPage({
   params,
@@ -25,18 +27,42 @@ export default async function OrderConfirmationPage({
   const session = await auth();
   if (order.userId && order.userId !== session?.user?.id) notFound();
 
+  const awaitingPayment = order.status === "PENDING_PAYMENT";
+  const paymentSettings = awaitingPayment ? await getPaymentSettings() : null;
+
   return (
     <div className="container-page py-16">
       <div className="mx-auto max-w-2xl text-center">
-        <div className="mx-auto mb-4 flex size-14 items-center justify-center rounded-none bg-success/15 text-success">
-          <CheckCircle2Icon className="size-7" />
-        </div>
-        <h1 className="text-3xl font-bold sm:text-4xl">Order Confirmed</h1>
+        {awaitingPayment ? (
+          <div className="mx-auto mb-4 flex size-14 items-center justify-center rounded-none bg-primary/15 text-primary">
+            <QrCodeIcon className="size-7" />
+          </div>
+        ) : (
+          <div className="mx-auto mb-4 flex size-14 items-center justify-center rounded-none bg-success/15 text-success">
+            <CheckCircle2Icon className="size-7" />
+          </div>
+        )}
+        <h1 className="text-3xl font-bold sm:text-4xl">
+          {awaitingPayment ? "Order Placed" : "Order Confirmed"}
+        </h1>
         <p className="mt-2 text-muted-foreground">
           Thanks{order.shippingName ? `, ${order.shippingName.split(" ")[0]}` : ""}! We&apos;ve
           received order <span className="font-medium text-foreground">#{order.id.slice(-8).toUpperCase()}</span>.
+          {awaitingPayment && !order.paymentProofUrl && " Complete your payment below to confirm it."}
         </p>
       </div>
+
+      {paymentSettings && (
+        <div className="mx-auto mt-10 max-w-2xl">
+          <PaymentPanel
+            orderId={order.id}
+            total={order.total}
+            paymentProofUrl={order.paymentProofUrl}
+            settings={paymentSettings}
+            clearCartOnSubmit
+          />
+        </div>
+      )}
 
       <div className="mx-auto mt-10 max-w-2xl rounded-2xl border border-border bg-card p-6 shadow-soft">
         <div className="mb-4 flex items-center justify-between">
@@ -114,7 +140,7 @@ export default async function OrderConfirmationPage({
           <Link href="/shop">Continue Shopping</Link>
         </Button>
         <Button asChild>
-          <Link href={session?.user ? "/account/orders" : "/bunnycraft-track"}>Track Your Order</Link>
+          <Link href={session?.user ? "/account/orders" : "/bunnycraft-track-order"}>Track Your Order</Link>
         </Button>
       </div>
     </div>
