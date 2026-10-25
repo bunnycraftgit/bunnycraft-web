@@ -1,9 +1,8 @@
 import type { Metadata } from "next";
-import type { Prisma } from "@prisma/client";
 
 import { auth } from "@/lib/auth";
 import { UsersManager } from "@/components/admin/users-manager";
-import { prisma } from "@bunnycraft/db";
+import { Op, User, contains, countOf, type WhereOptions } from "@bunnycraft/db";
 import { parsePage, parseQuery, paginationMeta } from "@/lib/pagination";
 
 export const metadata: Metadata = { title: "Admin — Users" };
@@ -18,27 +17,27 @@ export default async function AdminUsersPage({
   const sp = await searchParams;
   const page = parsePage(sp);
   const q = parseQuery(sp);
-  const where: Prisma.UserWhereInput = q
-    ? { OR: [{ name: { contains: q } }, { email: { contains: q } }] }
+  const where: WhereOptions = q
+    ? { [Op.or]: [{ name: contains(q) }, { email: contains(q) }] }
     : {};
 
   const [session, users, total] = await Promise.all([
     auth(),
-    prisma.user.findMany({
+    User.findAll({
       where,
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        role: true,
-        createdAt: true,
-        _count: { select: { orders: true } },
-      },
-      orderBy: { createdAt: "desc" },
-      skip: (page - 1) * PAGE_SIZE,
-      take: PAGE_SIZE,
+      attributes: [
+        "id",
+        "name",
+        "email",
+        "role",
+        "createdAt",
+        [countOf("Order", "userId", "User"), "orderCount"],
+      ],
+      order: [["createdAt", "DESC"]],
+      offset: (page - 1) * PAGE_SIZE,
+      limit: PAGE_SIZE,
     }),
-    prisma.user.count({ where }),
+    User.count({ where }),
   ]);
 
   const plain = users.map((u) => ({
@@ -47,7 +46,7 @@ export default async function AdminUsersPage({
     email: u.email,
     role: u.role,
     createdAt: u.createdAt.toISOString(),
-    orderCount: u._count.orders,
+    orderCount: Number(u.get("orderCount")),
   }));
 
   return (

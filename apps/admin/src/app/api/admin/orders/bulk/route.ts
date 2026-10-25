@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { prisma } from "@bunnycraft/db";
+import { Order } from "@bunnycraft/db";
 import { requireAdmin } from "@/lib/require-admin";
 
 const bulkSchema = z.object({
@@ -18,9 +18,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: parsed.error.issues[0]?.message }, { status: 400 });
   }
 
-  const result = await prisma.order.updateMany({
-    where: { id: { in: parsed.data.ids } },
-    data: { status: parsed.data.status },
-  });
-  return NextResponse.json({ ok: true, count: result.count });
+  const [count] = await Order.update(
+    { status: parsed.data.status },
+    { where: { id: parsed.data.ids } }
+  );
+  return NextResponse.json({ ok: true, count });
 }

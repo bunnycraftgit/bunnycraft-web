@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 
-import { prisma } from "@bunnycraft/db";
+import { User } from "@bunnycraft/db";
 import { registerSchema } from "@/lib/validations/auth";
 
 export async function POST(request: Request) {
@@ -17,7 +17,7 @@ export async function POST(request: Request) {
 
   const { name, email, password } = parsed.data;
 
-  const existing = await prisma.user.findUnique({ where: { email } });
+  const existing = await User.findOne({ where: { email } });
   if (existing) {
     return NextResponse.json(
       { error: "An account with that email already exists." },
@@ -26,9 +26,7 @@ export async function POST(request: Request) {
   }
 
   const passwordHash = await bcrypt.hash(password, 10);
-  await prisma.user.create({
-    data: { name, email, passwordHash },
-  });
+  await User.create({ name, email, passwordHash });
 
   return NextResponse.json({ ok: true });
 }

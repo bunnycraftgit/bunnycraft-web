@@ -3,7 +3,7 @@ import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 
 import { authConfig } from "@/lib/auth.config";
-import { prisma } from "@bunnycraft/db";
+import { User } from "@bunnycraft/db";
 import { loginSchema } from "@/lib/validations/auth";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
@@ -19,9 +19,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const parsed = loginSchema.safeParse(credentials);
         if (!parsed.success) return null;
 
-        const user = await prisma.user.findUnique({
-          where: { email: parsed.data.email },
-        });
+        const user = await User.findOne({ where: { email: parsed.data.email } });
         if (!user) return null;
 
         const validPassword = await bcrypt.compare(parsed.data.password, user.passwordHash);

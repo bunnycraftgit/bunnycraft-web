@@ -210,7 +210,7 @@ export function FilamentsManager({ initial, meta }: { initial: Filament[]; meta:
                 <Input value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })} />
               </div>
               <div className="flex flex-col gap-1.5">
-                <Label>Price per gram ($)</Label>
+                <Label>Price per gram (₹)</Label>
                 <Input
                   type="number"
                   step="0.001"

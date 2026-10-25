@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
-import type { Prisma } from "@prisma/client";
 
 import { ReviewsManager } from "@/components/admin/reviews-manager";
-import { prisma } from "@bunnycraft/db";
+import { Op, Product, Review, contains, type WhereOptions } from "@bunnycraft/db";
 import { parsePage, parseQuery, paginationMeta } from "@/lib/pagination";
 
 export const metadata: Metadata = { title: "Admin — Reviews" };
@@ -17,20 +16,20 @@ export default async function AdminReviewsPage({
   const sp = await searchParams;
   const page = parsePage(sp);
   const q = parseQuery(sp);
-  const where: Prisma.ReviewWhereInput = q
-    ? { OR: [{ authorName: { contains: q } }, { product: { name: { contains: q } } }] }
+  const where: WhereOptions = q
+    ? { [Op.or]: [{ authorName: contains(q) }, { "$product.name$": contains(q) }] }
     : {};
 
   const [reviews, total, products] = await Promise.all([
-    prisma.review.findMany({
+    Review.findAll({
       where,
-      include: { product: { select: { name: true, slug: true } } },
-      orderBy: { createdAt: "desc" },
-      skip: (page - 1) * PAGE_SIZE,
-      take: PAGE_SIZE,
+      include: [{ model: Product, as: "product", attributes: ["name", "slug"] }],
+      order: [["createdAt", "DESC"]],
+      offset: (page - 1) * PAGE_SIZE,
+      limit: PAGE_SIZE,
     }),
-    prisma.review.count({ where }),
-    prisma.product.findMany({ select: { id: true, name: true }, orderBy: { name: "asc" } }),
+    Review.count({ where, include: [{ model: Product, as: "product", attributes: [] }] }),
+    Product.findAll({ attributes: ["id", "name"], order: [["name", "ASC"]] }),
   ]);
 
   const plain = reviews.map((r) => ({
@@ -40,13 +39,13 @@ export default async function AdminReviewsPage({
     comment: r.comment,
     photoUrl: r.photoUrl,
     createdAt: r.createdAt.toISOString(),
-    product: r.product,
+    product: { name: r.product?.name ?? "", slug: r.product?.slug ?? "" },
   }));
 
   return (
     <ReviewsManager
       initial={plain}
-      products={products}
+      products={products.map((p) => ({ id: p.id, name: p.name }))}
       meta={paginationMeta(page, total, PAGE_SIZE)}
     />
   );

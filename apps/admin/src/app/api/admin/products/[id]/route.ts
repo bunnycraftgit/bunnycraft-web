@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { prisma } from "@bunnycraft/db";
+import { Product, updateByPk } from "@bunnycraft/db";
 import { requireAdmin } from "@/lib/require-admin";
 import { productSchema } from "@/lib/validations/admin";
 
@@ -14,7 +14,10 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     return NextResponse.json({ error: parsed.error.issues[0]?.message }, { status: 400 });
   }
 
-  const product = await prisma.product.update({ where: { id }, data: parsed.data });
+  const product = await updateByPk(Product, id, parsed.data);
+  if (!product) {
+    return NextResponse.json({ error: "Product not found." }, { status: 404 });
+  }
   return NextResponse.json(product);
 }
 
@@ -24,7 +27,7 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
 
   const { id } = await params;
   try {
-    await prisma.product.delete({ where: { id } });
+    await Product.destroy({ where: { id } });
     return NextResponse.json({ ok: true });
   } catch {
     return NextResponse.json(

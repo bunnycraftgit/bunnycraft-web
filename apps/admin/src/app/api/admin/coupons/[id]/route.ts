@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { prisma } from "@bunnycraft/db";
+import { Coupon, updateByPk } from "@bunnycraft/db";
 import { requireAdmin } from "@/lib/require-admin";
 import { couponSchema } from "@/lib/validations/admin";
 
@@ -15,14 +15,14 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   }
 
   const { expiresAt, ...rest } = parsed.data;
-  const coupon = await prisma.coupon.update({
-    where: { id },
-    data: {
-      ...rest,
-      ...(rest.code ? { code: rest.code.toUpperCase() } : {}),
-      ...(expiresAt !== undefined ? { expiresAt: expiresAt ? new Date(expiresAt) : null } : {}),
-    },
+  const coupon = await updateByPk(Coupon, id, {
+    ...rest,
+    ...(rest.code ? { code: rest.code.toUpperCase() } : {}),
+    ...(expiresAt !== undefined ? { expiresAt: expiresAt ? new Date(expiresAt) : null } : {}),
   });
+  if (!coupon) {
+    return NextResponse.json({ error: "Coupon not found." }, { status: 404 });
+  }
   return NextResponse.json(coupon);
 }
 
@@ -31,6 +31,6 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
   if (response) return response;
 
   const { id } = await params;
-  await prisma.coupon.delete({ where: { id } });
+  await Coupon.destroy({ where: { id } });
   return NextResponse.json({ ok: true });
 }

@@ -1,8 +1,16 @@
 import { NextResponse } from "next/server";
-import type { Prisma } from "@prisma/client";
 
 import { auth } from "@/lib/auth";
-import { prisma } from "@bunnycraft/db";
+import {
+  Address,
+  Coupon,
+  Filament,
+  Order,
+  OrderItem,
+  Product,
+  sequelize,
+  type CreationAttributes,
+} from "@bunnycraft/db";
 import { getPricingSettings } from "@/lib/data/filaments";
 import { calculateCustomPrintPrice, round2 } from "@/lib/pricing";
 import { createOrderSchema } from "@/lib/validations/order";
@@ -16,10 +24,10 @@ export async function GET() {
     return NextResponse.json({ error: "Not signed in." }, { status: 401 });
   }
 
-  const orders = await prisma.order.findMany({
+  const orders = await Order.findAll({
     where: { userId: session.user.id },
-    orderBy: { createdAt: "desc" },
-    include: { items: true },
+    order: [["createdAt", "DESC"]],
+    include: [{ model: OrderItem, as: "items" }],
   });
 
   return NextResponse.json(orders);
@@ -51,8 +59,8 @@ export async function POST(request: Request) {
   const filamentIds = [...new Set(items.filter((i) => i.kind === "CUSTOM").map((i) => i.filamentId))];
 
   const [products, filaments] = await Promise.all([
-    productIds.length ? prisma.product.findMany({ where: { id: { in: productIds } } }) : [],
-    filamentIds.length ? prisma.filament.findMany({ where: { id: { in: filamentIds } } }) : [],
+    productIds.length ? Product.findAll({ where: { id: productIds } }) : [],
+    filamentIds.length ? Filament.findAll({ where: { id: filamentIds } }) : [],
   ]);
   const productById = new Map(products.map((p) => [p.id, p]));
   const filamentById = new Map(filaments.map((f) => [f.id, f]));
@@ -85,7 +93,7 @@ export async function POST(request: Request) {
   }
 
   let subtotal = 0;
-  const itemsToCreate: Prisma.OrderItemCreateWithoutOrderInput[] = [];
+  const itemsToCreate: Omit<CreationAttributes<OrderItem>, "orderId">[] = [];
 
   for (const item of items) {
     if (item.kind === "PRODUCT") {
@@ -97,7 +105,7 @@ export async function POST(request: Request) {
         name: product.name,
         quantity: item.quantity,
         unitPrice,
-        product: { connect: { id: product.id } },
+        productId: product.id,
       });
     } else {
       const filament = filamentById.get(item.filamentId)!;
@@ -113,7 +121,7 @@ export async function POST(request: Request) {
         name: `Custom print — ${item.fileName} (${filament.name}, ${item.colorName})`,
         quantity: item.quantity,
         unitPrice: breakdown.unitPrice,
-        filament: { connect: { id: filament.id } },
+        filamentId: filament.id,
         fileUrl: item.fileUrl,
         fileName: item.fileName,
         fileType: item.fileType,
@@ -128,9 +136,9 @@ export async function POST(request: Request) {
   subtotal = round2(subtotal);
 
   let discountTotal = 0;
-  let appliedCouponCode: string | null = null;
+  let appliedCoupon: Coupon | null = null;
   if (couponCode) {
-    const coupon = await prisma.coupon.findUnique({ where: { code: couponCode.trim().toUpperCase() } });
+    const coupon = await Coupon.findOne({ where: { code: couponCode.trim().toUpperCase() } });
     const validCoupon =
       coupon &&
       coupon.active &&
@@ -143,48 +151,55 @@ export async function POST(request: Request) {
         coupon.discountType === "PERCENT"
           ? round2(subtotal * (Number(coupon.value) / 100))
           : Math.min(Number(coupon.value), subtotal);
-      appliedCouponCode = coupon.code;
-      await prisma.coupon.update({ where: { id: coupon.id }, data: { usedCount: { increment: 1 } } });
+      appliedCoupon = coupon;
     }
   }
 
   const shippingTotal = subtotal - discountTotal >= FREE_SHIPPING_THRESHOLD ? 0 : FLAT_SHIPPING_RATE;
   const total = round2(Math.max(0, subtotal - discountTotal) + shippingTotal);
 
-  const order = await prisma.order.create({
-    data: {
-      userId: session?.user?.id,
-      guestEmail: session?.user ? undefined : guestEmail,
-      status: "PENDING_PAYMENT",
-      subtotal,
-      discountTotal,
-      shippingTotal,
-      total,
-      couponCode: appliedCouponCode,
-      shippingName: shipping.fullName,
-      shippingLine1: shipping.line1,
-      shippingLine2: shipping.line2,
-      shippingCity: shipping.city,
-      shippingState: shipping.state,
-      shippingZip: shipping.zip,
-      shippingCountry: shipping.country,
-      items: { create: itemsToCreate },
-    },
+  const order = await sequelize.transaction(async (transaction) => {
+    const created = await Order.create(
+      {
+        userId: session?.user?.id ?? null,
+        guestEmail: session?.user ? null : guestEmail,
+        status: "PENDING_PAYMENT",
+        subtotal,
+        discountTotal,
+        shippingTotal,
+        total,
+        couponCode: appliedCoupon?.code ?? null,
+        shippingName: shipping.fullName,
+        shippingLine1: shipping.line1,
+        shippingLine2: shipping.line2,
+        shippingCity: shipping.city,
+        shippingState: shipping.state,
+        shippingZip: shipping.zip,
+        shippingCountry: shipping.country,
+      },
+      { transaction }
+    );
+    await OrderItem.bulkCreate(
+      itemsToCreate.map((item) => ({ ...item, orderId: created.id })),
+      { transaction }
+    );
+    if (appliedCoupon) {
+      await appliedCoupon.increment("usedCount", { by: 1, transaction });
+    }
+    return created;
   });
 
   if (session?.user && saveAddress) {
-    await prisma.address.create({
-      data: {
-        userId: session.user.id,
-        fullName: shipping.fullName,
-        line1: shipping.line1,
-        line2: shipping.line2,
-        city: shipping.city,
-        state: shipping.state,
-        zip: shipping.zip,
-        country: shipping.country,
-        phone: shipping.phone,
-      },
+    await Address.create({
+      userId: session.user.id,
+      fullName: shipping.fullName,
+      line1: shipping.line1,
+      line2: shipping.line2,
+      city: shipping.city,
+      state: shipping.state,
+      zip: shipping.zip,
+      country: shipping.country,
+      phone: shipping.phone,
     });
   }
 

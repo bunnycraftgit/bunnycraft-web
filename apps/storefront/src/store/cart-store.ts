@@ -1,3 +1,4 @@
+import { useSyncExternalStore } from "react";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
@@ -104,4 +105,21 @@ export function useCartCount() {
 
 export function useCartSubtotal() {
   return useCartStore((s) => s.lines.reduce((sum, l) => sum + cartLineTotal(l), 0));
+}
+
+const noopSubscribe = () => () => {};
+
+/**
+ * How many of a catalog product are in the cart. Reports 0 during SSR and the
+ * hydration render so server and client markup match, then the persisted value.
+ */
+export function useCartProductQuantity(productId: string) {
+  const hydrated = useSyncExternalStore(noopSubscribe, () => true, () => false);
+  const quantity = useCartStore((s) =>
+    s.lines.reduce(
+      (sum, l) => (l.kind === "product" && l.productId === productId ? sum + l.quantity : sum),
+      0
+    )
+  );
+  return hydrated ? quantity : 0;
 }

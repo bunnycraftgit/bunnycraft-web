@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { prisma } from "@bunnycraft/db";
+import { Testimonial } from "@bunnycraft/db";
 import { submitTestimonialSchema } from "@/lib/validations/review";
 
 export async function POST(request: Request) {
@@ -13,15 +13,13 @@ export async function POST(request: Request) {
   // Bots fill the hidden field; pretend it worked so they don't retry.
   if (website) return NextResponse.json({ ok: true });
 
-  await prisma.testimonial.create({
-    data: {
-      name: data.name,
-      place: data.place || null,
-      photoUrl: data.photoUrl ?? null,
-      rating: data.rating,
-      comment: data.comment,
-      published: false,
-    },
+  await Testimonial.create({
+    name: data.name,
+    place: data.place || null,
+    photoUrl: data.photoUrl ?? null,
+    rating: data.rating,
+    comment: data.comment,
+    published: false,
   });
 
   return NextResponse.json({ ok: true });

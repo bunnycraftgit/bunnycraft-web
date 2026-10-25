@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { prisma } from "@bunnycraft/db";
+import { NewsletterSubscriber } from "@bunnycraft/db";
 
 const schema = z.object({ email: z.string().email() });
 
@@ -13,10 +13,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid email address." }, { status: 400 });
   }
 
-  await prisma.newsletterSubscriber.upsert({
+  await NewsletterSubscriber.findOrCreate({
     where: { email: parsed.data.email },
-    update: {},
-    create: { email: parsed.data.email },
+    defaults: { email: parsed.data.email },
   });
 
   return NextResponse.json({ ok: true });

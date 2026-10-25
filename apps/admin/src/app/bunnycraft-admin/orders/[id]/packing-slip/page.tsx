@@ -4,7 +4,7 @@ import { notFound, redirect } from "next/navigation";
 import { PrintButton } from "@/components/admin/print-button";
 import { auth } from "@/lib/auth";
 import { formatCurrency } from "@/lib/utils";
-import { prisma } from "@bunnycraft/db";
+import { Order, OrderItem, User } from "@bunnycraft/db";
 
 export const metadata: Metadata = { title: "Packing Slip" };
 
@@ -17,9 +17,11 @@ export default async function PackingSlipPage({
   if (session?.user?.role !== "ADMIN") redirect("/bunnycraft-admin/login");
 
   const { id } = await params;
-  const order = await prisma.order.findUnique({
-    where: { id },
-    include: { items: true, user: { select: { name: true, email: true } } },
+  const order = await Order.findByPk(id, {
+    include: [
+      { model: OrderItem, as: "items" },
+      { model: User, as: "user", attributes: ["name", "email"] },
+    ],
   });
   if (!order) notFound();
 
@@ -71,7 +73,7 @@ export default async function PackingSlipPage({
           </tr>
         </thead>
         <tbody>
-          {order.items.map((item) => (
+          {(order.items ?? []).map((item) => (
             <tr key={item.id} className="border-b border-foreground/10">
               <td className="py-2">{item.name}</td>
               <td className="py-2 text-right">{item.quantity}</td>

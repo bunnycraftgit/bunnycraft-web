@@ -1,4 +1,4 @@
-import { prisma } from "@bunnycraft/db";
+import { Filament, PricingSettings } from "@bunnycraft/db";
 import { FILAMENTS } from "@/lib/catalog-data";
 import { DEFAULT_PRICING_SETTINGS, type PricingSettingsValues } from "@/lib/pricing";
 
@@ -23,9 +23,9 @@ function fallbackFilaments(): PlainFilament[] {
 
 export async function getFilaments(): Promise<PlainFilament[]> {
   try {
-    const filaments = await prisma.filament.findMany({
+    const filaments = await Filament.findAll({
       where: { active: true },
-      orderBy: { pricePerGram: "asc" },
+      order: [["pricePerGram", "ASC"]],
     });
     if (filaments.length === 0) throw new Error("no filaments in database yet");
     return filaments.map((f) => ({
@@ -51,7 +51,7 @@ export async function getFilaments(): Promise<PlainFilament[]> {
 
 export async function getPricingSettings(): Promise<PricingSettingsValues> {
   try {
-    const settings = await prisma.pricingSettings.findUnique({ where: { id: 1 } });
+    const settings = await PricingSettings.findByPk(1);
     if (!settings) throw new Error("pricing settings not seeded yet");
     return {
       machineRatePerHour: Number(settings.machineRatePerHour),

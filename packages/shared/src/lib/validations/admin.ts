@@ -18,6 +18,11 @@ export const filamentSchema = z.object({
   active: z.boolean().optional(),
 });
 
+export const productSpecSchema = z.object({
+  label: z.string().trim().min(1, "Specification name is required.").max(100),
+  value: z.string().trim().min(1, "Specification value is required.").max(500),
+});
+
 export const productSchema = z.object({
   name: z.string().min(1),
   slug: z
@@ -30,6 +35,7 @@ export const productSchema = z.object({
   images: z.array(z.string().min(1)).min(1),
   material: z.string().optional(),
   tags: z.array(z.string()).optional(),
+  specifications: z.array(productSpecSchema).max(50).optional(),
   stock: z.number().int().nonnegative(),
   featured: z.boolean().optional(),
   status: z.enum(["LIVE", "SOLD_OUT", "COMING_SOON"]).optional(),

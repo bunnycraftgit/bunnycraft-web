@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { prisma } from "@bunnycraft/db";
+import { ContactMessage } from "@bunnycraft/db";
 import { contactSchema } from "@/lib/validations/contact";
 
 export async function POST(request: Request) {
@@ -12,7 +12,7 @@ export async function POST(request: Request) {
     );
   }
 
-  await prisma.contactMessage.create({ data: parsed.data });
+  await ContactMessage.create(parsed.data);
 
   return NextResponse.json({ ok: true });
 }

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { prisma } from "@bunnycraft/db";
+import { Product, sequelize } from "@bunnycraft/db";
 import { requireAdmin } from "@/lib/require-admin";
 
 const bulkSchema = z.object({
@@ -21,30 +21,30 @@ export async function POST(request: Request) {
   const { ids, action, categoryId } = parsed.data;
 
   if (action === "delete") {
-    const result = await prisma.product.deleteMany({ where: { id: { in: ids } } }).catch(() => null);
-    if (!result) {
+    // All-or-nothing: if any product is still referenced, none are deleted.
+    const count = await sequelize
+      .transaction((transaction) => Product.destroy({ where: { id: ids }, transaction }))
+      .catch(() => null);
+    if (count === null) {
       return NextResponse.json(
         { error: "Some products have existing orders, reviews, or wishlist saves and can't be deleted." },
         { status: 409 }
       );
     }
-    return NextResponse.json({ ok: true, count: result.count });
+    return NextResponse.json({ ok: true, count });
   }
 
   if (action === "setCategory") {
     if (!categoryId) {
       return NextResponse.json({ error: "A category is required." }, { status: 400 });
     }
-    const result = await prisma.product.updateMany({
-      where: { id: { in: ids } },
-      data: { categoryId },
-    });
-    return NextResponse.json({ ok: true, count: result.count });
+    const [count] = await Product.update({ categoryId }, { where: { id: ids } });
+    return NextResponse.json({ ok: true, count });
   }
 
-  const result = await prisma.product.updateMany({
-    where: { id: { in: ids } },
-    data: { featured: action === "feature" },
-  });
-  return NextResponse.json({ ok: true, count: result.count });
+  const [count] = await Product.update(
+    { featured: action === "feature" },
+    { where: { id: ids } }
+  );
+  return NextResponse.json({ ok: true, count });
 }

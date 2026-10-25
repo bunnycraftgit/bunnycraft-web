@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { auth } from "@/lib/auth";
-import { prisma } from "@bunnycraft/db";
+import { Address } from "@bunnycraft/db";
 import { shippingAddressSchema } from "@/lib/validations/order";
 
 export async function GET() {
@@ -10,9 +10,12 @@ export async function GET() {
     return NextResponse.json([]);
   }
 
-  const addresses = await prisma.address.findMany({
+  const addresses = await Address.findAll({
     where: { userId: session.user.id },
-    orderBy: [{ isDefault: "desc" }, { createdAt: "desc" }],
+    order: [
+      ["isDefault", "DESC"],
+      ["createdAt", "DESC"],
+    ],
   });
 
   return NextResponse.json(addresses);
@@ -32,10 +35,12 @@ export async function POST(request: Request) {
     );
   }
 
-  const existingCount = await prisma.address.count({ where: { userId: session.user.id } });
+  const existingCount = await Address.count({ where: { userId: session.user.id } });
 
-  const address = await prisma.address.create({
-    data: { ...parsed.data, userId: session.user.id, isDefault: existingCount === 0 },
+  const address = await Address.create({
+    ...parsed.data,
+    userId: session.user.id,
+    isDefault: existingCount === 0,
   });
 
   return NextResponse.json(address);

@@ -1,15 +1,11 @@
-import { PrismaClient } from "@prisma/client";
-
-const globalForPrisma = globalThis as unknown as {
-  prisma: PrismaClient | undefined;
-};
-
-export const prisma =
-  globalForPrisma.prisma ??
-  new PrismaClient({
-    log: process.env.NODE_ENV === "development" ? ["warn", "error"] : ["error"],
-  });
-
-if (process.env.NODE_ENV !== "production") {
-  globalForPrisma.prisma = prisma;
-}
+export { sequelize } from "./client";
+export * from "./models";
+export * from "./enums";
+export { Op, contains, countOf, endsWith, updateByPk } from "./helpers";
+export { fn, col, literal, where } from "sequelize";
+export type {
+  CreationAttributes,
+  Order as SequelizeOrder,
+  Transaction,
+  WhereOptions,
+} from "sequelize";

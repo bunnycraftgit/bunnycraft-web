@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { prisma } from "@bunnycraft/db";
+import { Filament } from "@bunnycraft/db";
 import { requireAdmin } from "@/lib/require-admin";
 import { filamentSchema } from "@/lib/validations/admin";
 
@@ -8,7 +8,7 @@ export async function GET() {
   const { response } = await requireAdmin();
   if (response) return response;
 
-  const filaments = await prisma.filament.findMany({ orderBy: { name: "asc" } });
+  const filaments = await Filament.findAll({ order: [["name", "ASC"]] });
   return NextResponse.json(filaments);
 }
 
@@ -21,6 +21,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: parsed.error.issues[0]?.message }, { status: 400 });
   }
 
-  const filament = await prisma.filament.create({ data: parsed.data });
+  const filament = await Filament.create(parsed.data);
   return NextResponse.json(filament);
 }

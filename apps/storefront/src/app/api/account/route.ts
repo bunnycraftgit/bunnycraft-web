@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { auth } from "@/lib/auth";
-import { prisma } from "@bunnycraft/db";
+import { User } from "@bunnycraft/db";
 
 const schema = z.object({
   name: z.string().min(2).max(80),
@@ -20,10 +20,13 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: "Enter a valid name." }, { status: 400 });
   }
 
-  await prisma.user.update({
-    where: { id: session.user.id },
-    data: { name: parsed.data.name, ...(parsed.data.image !== undefined ? { image: parsed.data.image } : {}) },
-  });
+  await User.update(
+    {
+      name: parsed.data.name,
+      ...(parsed.data.image !== undefined ? { image: parsed.data.image } : {}),
+    },
+    { where: { id: session.user.id } }
+  );
 
   return NextResponse.json({ ok: true });
 }

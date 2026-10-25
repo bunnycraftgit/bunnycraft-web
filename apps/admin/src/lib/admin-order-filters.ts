@@ -1,4 +1,12 @@
-import type { Prisma, OrderStatus } from "@prisma/client";
+import {
+  ORDER_STATUSES,
+  Op,
+  contains,
+  literal,
+  sequelize,
+  type OrderStatus,
+  type WhereOptions,
+} from "@bunnycraft/db";
 
 export type OrderFilterParams = {
   q?: string;
@@ -7,17 +15,26 @@ export type OrderFilterParams = {
   dateTo?: string;
 };
 
-const STATUSES = new Set(["PENDING_PAYMENT", "PROCESSING", "SHIPPED", "DELIVERED", "CANCELLED"]);
+const STATUSES = new Set<string>(ORDER_STATUSES);
 
-export function buildOrderWhere(sp: OrderFilterParams): Prisma.OrderWhereInput {
-  const where: Prisma.OrderWhereInput = {};
+export function buildOrderWhere(sp: OrderFilterParams): WhereOptions {
+  const where: Record<string | symbol, unknown> = {};
 
   if (sp.q) {
-    where.OR = [
-      { shippingName: { contains: sp.q } },
-      { guestEmail: { contains: sp.q } },
-      { user: { email: { contains: sp.q } } },
-      { user: { name: { contains: sp.q } } },
+    // Customer name/email live on User. Matching them through a subquery
+    // (rather than `$user.email$`) keeps this usable alongside a paginated
+    // `items` include, which Sequelize wraps in its own subquery.
+    const pattern = sequelize.escape(`%${sp.q.replace(/[\\%_]/g, (c) => `\\${c}`)}%`);
+    where[Op.or] = [
+      { shippingName: contains(sp.q) },
+      { guestEmail: contains(sp.q) },
+      {
+        userId: {
+          [Op.in]: literal(
+            `(SELECT \`id\` FROM \`User\` WHERE \`email\` LIKE ${pattern} OR \`name\` LIKE ${pattern})`
+          ),
+        },
+      },
     ];
   }
 
@@ -27,10 +44,10 @@ export function buildOrderWhere(sp: OrderFilterParams): Prisma.OrderWhereInput {
 
   if (sp.dateFrom || sp.dateTo) {
     where.createdAt = {
-      ...(sp.dateFrom ? { gte: new Date(sp.dateFrom) } : {}),
-      ...(sp.dateTo ? { lte: new Date(`${sp.dateTo}T23:59:59.999Z`) } : {}),
+      ...(sp.dateFrom ? { [Op.gte]: new Date(sp.dateFrom) } : {}),
+      ...(sp.dateTo ? { [Op.lte]: new Date(`${sp.dateTo}T23:59:59.999Z`) } : {}),
     };
   }
 
-  return where;
+  return where as WhereOptions;
 }

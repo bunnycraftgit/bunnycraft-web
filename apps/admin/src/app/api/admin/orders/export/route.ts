@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { prisma } from "@bunnycraft/db";
+import { Order, OrderItem, User } from "@bunnycraft/db";
 import { requireAdmin } from "@/lib/require-admin";
 import { buildOrderWhere } from "@/lib/admin-order-filters";
 
@@ -21,10 +21,13 @@ export async function GET(request: Request) {
     dateTo: url.searchParams.get("dateTo") ?? undefined,
   });
 
-  const orders = await prisma.order.findMany({
+  const orders = await Order.findAll({
     where,
-    include: { items: { select: { id: true } }, user: { select: { name: true, email: true } } },
-    orderBy: { createdAt: "desc" },
+    include: [
+      { model: OrderItem, as: "items", attributes: ["id"] },
+      { model: User, as: "user", attributes: ["name", "email"] },
+    ],
+    order: [["createdAt", "DESC"]],
   });
 
   const header = [
@@ -48,11 +51,11 @@ export async function GET(request: Request) {
     o.status,
     o.user?.name ?? o.shippingName,
     o.user?.email ?? o.guestEmail ?? "",
-    String(o.items.length),
-    o.subtotal.toString(),
-    o.discountTotal.toString(),
-    o.shippingTotal.toString(),
-    o.total.toString(),
+    String(o.items?.length ?? 0),
+    o.subtotal.toFixed(2),
+    o.discountTotal.toFixed(2),
+    o.shippingTotal.toFixed(2),
+    o.total.toFixed(2),
     o.couponCode ?? "",
     o.trackingNumber ?? "",
   ]);

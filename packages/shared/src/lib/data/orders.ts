@@ -1,4 +1,4 @@
-import { prisma } from "@bunnycraft/db";
+import { Order, OrderItem, User, endsWith } from "@bunnycraft/db";
 
 export type PlainOrderItem = {
   id: string;
@@ -39,7 +39,7 @@ export type PlainOrder = {
   items: PlainOrderItem[];
 };
 
-function mapOrder(order: NonNullable<Awaited<ReturnType<typeof fetchOrder>>>): PlainOrder {
+function mapOrder(order: Order): PlainOrder {
   return {
     id: order.id,
     status: order.status,
@@ -62,7 +62,7 @@ function mapOrder(order: NonNullable<Awaited<ReturnType<typeof fetchOrder>>>): P
     paymentReference: order.paymentReference,
     paymentSubmittedAt: order.paymentSubmittedAt?.toISOString() ?? null,
     createdAt: order.createdAt.toISOString(),
-    items: order.items.map((i) => ({
+    items: (order.items ?? []).map((i) => ({
       id: i.id,
       kind: i.kind,
       name: i.name,
@@ -78,8 +78,10 @@ function mapOrder(order: NonNullable<Awaited<ReturnType<typeof fetchOrder>>>): P
   };
 }
 
+const withItems = { model: OrderItem, as: "items" };
+
 function fetchOrder(id: string) {
-  return prisma.order.findUnique({ where: { id }, include: { items: true } });
+  return Order.findByPk(id, { include: [withItems] });
 }
 
 export async function getOrderById(id: string): Promise<PlainOrder | null> {
@@ -89,10 +91,10 @@ export async function getOrderById(id: string): Promise<PlainOrder | null> {
 }
 
 export async function getOrdersForUser(userId: string): Promise<PlainOrder[]> {
-  const orders = await prisma.order.findMany({
+  const orders = await Order.findAll({
     where: { userId },
-    include: { items: true },
-    orderBy: { createdAt: "desc" },
+    include: [withItems],
+    order: [["createdAt", "DESC"]],
   });
   return orders.map(mapOrder);
 }
@@ -108,9 +110,9 @@ export async function findOrderForTracking(
   const suffix = orderNumber.trim().toLowerCase().replace(/[^a-z0-9]/g, "");
   if (!suffix) return null;
 
-  const order = await prisma.order.findFirst({
-    where: { id: { endsWith: suffix } },
-    include: { items: true, user: { select: { email: true } } },
+  const order = await Order.findOne({
+    where: { id: endsWith(suffix) },
+    include: [withItems, { model: User, as: "user", attributes: ["email"] }],
   });
   if (!order) return null;
 

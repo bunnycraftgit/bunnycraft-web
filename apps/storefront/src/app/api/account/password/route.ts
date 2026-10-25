@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 
 import { auth } from "@/lib/auth";
-import { prisma } from "@bunnycraft/db";
+import { User } from "@bunnycraft/db";
 import { changePasswordSchema } from "@/lib/validations/auth";
 
 export async function PATCH(request: Request) {
@@ -16,7 +16,7 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: parsed.error.issues[0]?.message }, { status: 400 });
   }
 
-  const user = await prisma.user.findUnique({ where: { id: session.user.id } });
+  const user = await User.findByPk(session.user.id);
   if (!user) {
     return NextResponse.json({ error: "Not signed in." }, { status: 401 });
   }
@@ -27,7 +27,7 @@ export async function PATCH(request: Request) {
   }
 
   const passwordHash = await bcrypt.hash(parsed.data.newPassword, 10);
-  await prisma.user.update({ where: { id: user.id }, data: { passwordHash } });
+  await user.update({ passwordHash });
 
   return NextResponse.json({ ok: true });
 }

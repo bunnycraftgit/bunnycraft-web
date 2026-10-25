@@ -1,8 +1,18 @@
-import type { Prisma } from "@prisma/client";
-
-import { prisma } from "@bunnycraft/db";
+import {
+  Category,
+  Op,
+  Product,
+  WishlistItem,
+  contains,
+  type SequelizeOrder,
+  type WhereOptions,
+} from "@bunnycraft/db";
 import { CATEGORIES, PRODUCTS, printImage } from "@/lib/catalog-data";
 import type { ProductStatus } from "@/lib/product-status";
+
+export type ProductSpec = { label: string; value: string };
+
+const withCategory = { model: Category, as: "category" };
 
 export type PlainProduct = {
   id: string;
@@ -14,6 +24,7 @@ export type PlainProduct = {
   images: string[];
   material: string | null;
   tags: string[];
+  specifications: ProductSpec[];
   stock: number;
   rating: number;
   reviewCount: number;
@@ -23,9 +34,9 @@ export type PlainProduct = {
   categoryName: string;
 };
 
-type ProductWithCategory = Prisma.ProductGetPayload<{ include: { category: true } }>;
-
-function mapProduct(p: ProductWithCategory): PlainProduct {
+// Expects a product loaded with `include: [withCategory]`.
+function mapProduct(p: Product): PlainProduct {
+  const category = p.category!;
   return {
     id: p.id,
     name: p.name,
@@ -33,16 +44,17 @@ function mapProduct(p: ProductWithCategory): PlainProduct {
     description: p.description,
     price: Number(p.price),
     compareAtPrice: p.compareAtPrice ? Number(p.compareAtPrice) : null,
-    images: Array.isArray(p.images) ? (p.images as string[]) : [],
+    images: Array.isArray(p.images) ? p.images : [],
     material: p.material,
-    tags: Array.isArray(p.tags) ? (p.tags as string[]) : [],
+    tags: Array.isArray(p.tags) ? p.tags : [],
+    specifications: Array.isArray(p.specifications) ? p.specifications : [],
     stock: p.stock,
     rating: Number(p.rating),
     reviewCount: p.reviewCount,
     featured: p.featured,
     status: p.status,
-    categorySlug: p.category.slug,
-    categoryName: p.category.name,
+    categorySlug: category.slug,
+    categoryName: category.name,
   };
 }
 
@@ -62,6 +74,7 @@ function fallbackProducts(): PlainProduct[] {
       images: [printImage(i), printImage(i + 3), printImage(i + 6)],
       material: p.material,
       tags: [...p.tags],
+      specifications: [],
       stock: 25,
       rating: 4.6,
       reviewCount: 14,
@@ -75,11 +88,11 @@ function fallbackProducts(): PlainProduct[] {
 
 export async function getFeaturedProducts(limit = 8): Promise<PlainProduct[]> {
   try {
-    const products = await prisma.product.findMany({
+    const products = await Product.findAll({
       where: { featured: true },
-      include: { category: true },
-      take: limit,
-      orderBy: { createdAt: "desc" },
+      include: [withCategory],
+      limit,
+      order: [["createdAt", "DESC"]],
     });
     if (products.length === 0) throw new Error("no featured products in database yet");
     return products.map(mapProduct);
@@ -141,41 +154,43 @@ function filterFallback(products: PlainProduct[], filters: ProductFilters) {
 
 export async function getProducts(filters: ProductFilters = {}): Promise<PlainProduct[]> {
   try {
-    const where: Prisma.ProductWhereInput = {};
-    if (filters.category) where.category = { slug: filters.category };
+    const where: WhereOptions = {};
     if (filters.material) where.material = filters.material;
     if (filters.minPrice != null || filters.maxPrice != null) {
       where.price = {
-        ...(filters.minPrice != null ? { gte: filters.minPrice } : {}),
-        ...(filters.maxPrice != null ? { lte: filters.maxPrice } : {}),
+        ...(filters.minPrice != null ? { [Op.gte]: filters.minPrice } : {}),
+        ...(filters.maxPrice != null ? { [Op.lte]: filters.maxPrice } : {}),
       };
     }
     if (filters.q) {
-      where.OR = [
-        { name: { contains: filters.q } },
-        { description: { contains: filters.q } },
-      ];
+      Object.assign(where, {
+        [Op.or]: [{ name: contains(filters.q) }, { description: contains(filters.q) }],
+      });
     }
 
-    const orderBy: Prisma.ProductOrderByWithRelationInput =
+    const order: SequelizeOrder =
       filters.sort === "price-asc"
-        ? { price: "asc" }
+        ? [["price", "ASC"]]
         : filters.sort === "price-desc"
-          ? { price: "desc" }
+          ? [["price", "DESC"]]
           : filters.sort === "rating"
-            ? { rating: "desc" }
+            ? [["rating", "DESC"]]
             : filters.sort === "featured"
-              ? { featured: "desc" }
-              : { createdAt: "desc" };
+              ? [["featured", "DESC"]]
+              : [["createdAt", "DESC"]];
 
-    const products = await prisma.product.findMany({
+    const products = await Product.findAll({
       where,
-      include: { category: true },
-      orderBy,
-      take: 60,
+      include: [
+        filters.category
+          ? { ...withCategory, where: { slug: filters.category }, required: true }
+          : withCategory,
+      ],
+      order,
+      limit: 60,
     });
 
-    const total = await prisma.product.count();
+    const total = await Product.count();
     if (total === 0) throw new Error("no products in database yet");
 
     return products.map(mapProduct);
@@ -190,16 +205,13 @@ export async function getProducts(filters: ProductFilters = {}): Promise<PlainPr
 
 export async function getProductBySlug(slug: string): Promise<PlainProduct | null> {
   try {
-    const product = await prisma.product.findUnique({
-      where: { slug },
-      include: { category: true },
-    });
+    const product = await Product.findOne({ where: { slug }, include: [withCategory] });
     if (product) return mapProduct(product);
 
     // A real miss against a seeded database is a genuine 404 — only fall
     // back to static catalog data when the table itself is still empty
     // (database not seeded yet).
-    const total = await prisma.product.count();
+    const total = await Product.count();
     if (total > 0) return null;
     return fallbackProducts().find((p) => p.slug === slug) ?? null;
   } catch (err) {
@@ -226,12 +238,12 @@ export function getAllMaterials(): string[] {
 
 export async function getWishlistProducts(userId: string): Promise<PlainProduct[]> {
   try {
-    const items = await prisma.wishlistItem.findMany({
+    const items = await WishlistItem.findAll({
       where: { userId },
-      include: { product: { include: { category: true } } },
-      orderBy: { createdAt: "desc" },
+      include: [{ model: Product, as: "product", include: [withCategory] }],
+      order: [["createdAt", "DESC"]],
     });
-    return items.map((i) => mapProduct(i.product));
+    return items.map((i) => mapProduct(i.product!));
   } catch (err) {
     console.warn(
       "[getWishlistProducts] unable to load wishlist —",

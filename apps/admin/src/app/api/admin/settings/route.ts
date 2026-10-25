@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { prisma } from "@bunnycraft/db";
+import { PricingSettings } from "@bunnycraft/db";
 import { requireAdmin } from "@/lib/require-admin";
 import { pricingSettingsSchema } from "@/lib/validations/admin";
 
@@ -13,10 +13,6 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: parsed.error.issues[0]?.message }, { status: 400 });
   }
 
-  const settings = await prisma.pricingSettings.upsert({
-    where: { id: 1 },
-    update: parsed.data,
-    create: { id: 1, ...parsed.data },
-  });
+  const [settings] = await PricingSettings.upsert({ id: 1, ...parsed.data });
   return NextResponse.json(settings);
 }

@@ -1,5 +1,5 @@
 export type PricingSettingsValues = {
-  /** $/hour the printer is considered to "cost" while running. */
+  /** ₹/hour the printer is considered to "cost" while running. */
   machineRatePerHour: number;
   /** Average grams of filament a printer extrudes per hour at standard settings. */
   printSpeedGramsPerHour: number;

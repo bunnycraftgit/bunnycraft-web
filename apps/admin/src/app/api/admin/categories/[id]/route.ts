@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { prisma } from "@bunnycraft/db";
+import { Category, updateByPk } from "@bunnycraft/db";
 import { requireAdmin } from "@/lib/require-admin";
 import { categorySchema } from "@/lib/validations/admin";
 
@@ -14,7 +14,10 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     return NextResponse.json({ error: parsed.error.issues[0]?.message }, { status: 400 });
   }
 
-  const category = await prisma.category.update({ where: { id }, data: parsed.data });
+  const category = await updateByPk(Category, id, parsed.data);
+  if (!category) {
+    return NextResponse.json({ error: "Category not found." }, { status: 404 });
+  }
   return NextResponse.json(category);
 }
 
@@ -24,7 +27,7 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
 
   const { id } = await params;
   try {
-    await prisma.category.delete({ where: { id } });
+    await Category.destroy({ where: { id } });
     return NextResponse.json({ ok: true });
   } catch {
     return NextResponse.json(

@@ -6,6 +6,9 @@ import type { NextConfig } from "next";
 const ADMIN_ORIGIN = process.env.ADMIN_ORIGIN ?? "http://localhost:3001";
 
 const nextConfig: NextConfig = {
+  // Sequelize loads its dialect dynamically and mysql2 has native-ish deps;
+  // load both with Node's require instead of bundling them.
+  serverExternalPackages: ["sequelize", "mysql2"],
   images: {
     remotePatterns: [
       { protocol: "https", hostname: "picsum.photos" },

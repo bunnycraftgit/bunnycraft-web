@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { prisma } from "@bunnycraft/db";
+import { Coupon } from "@bunnycraft/db";
 
 const schema = z.object({
   code: z.string().min(1),
@@ -16,9 +16,7 @@ export async function POST(request: Request) {
 
   const { code, subtotal } = parsed.data;
 
-  const coupon = await prisma.coupon.findUnique({
-    where: { code: code.trim().toUpperCase() },
-  });
+  const coupon = await Coupon.findOne({ where: { code: code.trim().toUpperCase() } });
 
   if (!coupon || !coupon.active) {
     return NextResponse.json({ valid: false, message: "That coupon code isn't valid." });

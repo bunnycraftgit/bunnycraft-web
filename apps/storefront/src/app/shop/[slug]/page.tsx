@@ -11,7 +11,7 @@ import { WriteReviewForm } from "@/components/shop/write-review-form";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { auth } from "@/lib/auth";
-import { prisma } from "@bunnycraft/db";
+import { Review } from "@bunnycraft/db";
 import { getProductBySlug, getRelatedProducts } from "@/lib/data/products";
 import { getProductReviews } from "@/lib/data/reviews";
 import { formatCurrency } from "@/lib/utils";
@@ -44,9 +44,9 @@ export default async function ProductPage({
     getProductReviews(product.id),
     getRelatedProducts(product.categorySlug, product.slug),
     session?.user
-      ? prisma.review.findFirst({
+      ? Review.findOne({
           where: { productId: product.id, userId: session.user.id },
-          select: { id: true },
+          attributes: ["id"],
         })
       : null,
   ]);
@@ -96,6 +96,23 @@ export default async function ProductPage({
           <AddToCartPanel product={product} />
         </div>
       </div>
+
+      {product.specifications.length > 0 && (
+        <>
+          <Separator className="my-14" />
+          <div className="mx-auto max-w-3xl">
+            <h2 className="mb-6 text-2xl font-bold">Specifications</h2>
+            <dl className="divide-y divide-border overflow-hidden rounded-2xl border border-border">
+              {product.specifications.map((spec, i) => (
+                <div key={i} className="grid grid-cols-3 gap-4 px-5 py-3 text-sm">
+                  <dt className="font-medium">{spec.label}</dt>
+                  <dd className="col-span-2 text-muted-foreground">{spec.value}</dd>
+                </div>
+              ))}
+            </dl>
+          </div>
+        </>
+      )}
 
       <Separator className="my-14" />
 

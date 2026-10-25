@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { prisma } from "@bunnycraft/db";
+import { Testimonial } from "@bunnycraft/db";
 import { requireAdmin } from "@/lib/require-admin";
 import { testimonialSchema } from "@/lib/validations/admin";
 
@@ -13,8 +13,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: parsed.error.issues[0]?.message }, { status: 400 });
   }
 
-  const testimonial = await prisma.testimonial.create({
-    data: { ...parsed.data, place: parsed.data.place || null },
+  const testimonial = await Testimonial.create({
+    ...parsed.data,
+    place: parsed.data.place || null,
   });
   return NextResponse.json(testimonial);
 }

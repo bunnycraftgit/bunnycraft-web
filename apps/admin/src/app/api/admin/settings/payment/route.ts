@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { prisma } from "@bunnycraft/db";
+import { PaymentSettings } from "@bunnycraft/db";
 import { requireAdmin } from "@/lib/require-admin";
 import { paymentSettingsSchema } from "@/lib/validations/admin";
 
@@ -18,10 +18,6 @@ export async function PATCH(request: Request) {
     upiId: parsed.data.upiId || null,
     payeeName: parsed.data.payeeName || null,
   };
-  const settings = await prisma.paymentSettings.upsert({
-    where: { id: 1 },
-    update: data,
-    create: { id: 1, ...data },
-  });
+  const [settings] = await PaymentSettings.upsert({ id: 1, ...data });
   return NextResponse.json(settings);
 }

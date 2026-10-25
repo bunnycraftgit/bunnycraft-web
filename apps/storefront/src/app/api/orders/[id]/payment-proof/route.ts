@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { auth } from "@/lib/auth";
-import { prisma } from "@bunnycraft/db";
+import { Order } from "@bunnycraft/db";
 import { saveUploadedFile } from "@/lib/storage";
 import { paymentReferenceSchema } from "@/lib/validations/order";
 
@@ -31,7 +31,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: "Transaction ID is too long." }, { status: 400 });
   }
 
-  const order = await prisma.order.findUnique({ where: { id } });
+  const order = await Order.findByPk(id);
   if (!order) {
     return NextResponse.json({ error: "Order not found." }, { status: 404 });
   }
@@ -49,13 +49,10 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
   const { url } = await saveUploadedFile(file);
 
-  await prisma.order.update({
-    where: { id },
-    data: {
-      paymentProofUrl: url,
-      paymentReference: reference.data || null,
-      paymentSubmittedAt: new Date(),
-    },
+  await order.update({
+    paymentProofUrl: url,
+    paymentReference: reference.data || null,
+    paymentSubmittedAt: new Date(),
   });
 
   return NextResponse.json({ ok: true });

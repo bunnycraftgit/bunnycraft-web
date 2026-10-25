@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 
 import { TrendChart } from "@/components/admin/trend-chart";
-import { prisma } from "@bunnycraft/db";
+import { ContactMessage, Filament, Op, Order, OrderItem, Product, Review } from "@bunnycraft/db";
 import { formatCurrency } from "@/lib/utils";
 
 export const metadata: Metadata = { title: "Admin Dashboard" };
@@ -48,35 +48,38 @@ export default async function AdminDashboardPage() {
     recentReviews,
     recentMessages,
   ] = await Promise.all([
-    prisma.product.count(),
-    prisma.filament.count(),
-    prisma.order.count({ where: { status: "PENDING_PAYMENT" } }),
-    prisma.order.findMany({ select: { total: true }, take: 2000 }),
-    prisma.order.findMany({
-      where: { createdAt: { gte: cutoff } },
-      select: { createdAt: true, total: true },
+    Product.count(),
+    Filament.count(),
+    Order.count({ where: { status: "PENDING_PAYMENT" } }),
+    Order.findAll({ attributes: ["total"], limit: 2000 }),
+    Order.findAll({
+      where: { createdAt: { [Op.gte]: cutoff } },
+      attributes: ["createdAt", "total"],
     }),
-    prisma.orderItem.findMany({
-      where: { kind: "PRODUCT", order: { createdAt: { gte: cutoff } } },
-      select: { name: true, quantity: true, unitPrice: true },
+    OrderItem.findAll({
+      where: { kind: "PRODUCT" },
+      attributes: ["name", "quantity", "unitPrice"],
+      include: [
+        { model: Order, as: "order", attributes: [], where: { createdAt: { [Op.gte]: cutoff } } },
+      ],
     }),
-    prisma.product.findMany({
-      where: { stock: { lte: LOW_STOCK_THRESHOLD } },
-      orderBy: { stock: "asc" },
-      take: 6,
-      select: { id: true, name: true, stock: true },
+    Product.findAll({
+      where: { stock: { [Op.lte]: LOW_STOCK_THRESHOLD } },
+      order: [["stock", "ASC"]],
+      limit: 6,
+      attributes: ["id", "name", "stock"],
     }),
-    prisma.order.findMany({
-      orderBy: { createdAt: "desc" },
-      take: 5,
-      select: { id: true, total: true, createdAt: true },
+    Order.findAll({
+      order: [["createdAt", "DESC"]],
+      limit: 5,
+      attributes: ["id", "total", "createdAt"],
     }),
-    prisma.review.findMany({
-      orderBy: { createdAt: "desc" },
-      take: 5,
-      include: { product: { select: { name: true } } },
+    Review.findAll({
+      order: [["createdAt", "DESC"]],
+      limit: 5,
+      include: [{ model: Product, as: "product", attributes: ["name"] }],
     }),
-    prisma.contactMessage.findMany({ orderBy: { createdAt: "desc" }, take: 5 }),
+    ContactMessage.findAll({ order: [["createdAt", "DESC"]], limit: 5 }),
   ]);
 
   const revenue = allOrderTotals.reduce((sum, o) => sum + Number(o.total), 0);
@@ -116,7 +119,7 @@ export default async function AdminDashboardPage() {
     })),
     ...recentReviews.map((r) => ({
       id: `review-${r.id}`,
-      text: `${r.authorName} left a ${r.rating}★ review on ${r.product.name}`,
+      text: `${r.authorName} left a ${r.rating}★ review on ${r.product?.name ?? "a product"}`,
       href: "/bunnycraft-admin/reviews",
       icon: StarIcon,
       createdAt: r.createdAt,

@@ -1,4 +1,3 @@
-import { StrengthRating } from "@prisma/client";
 
 export function img(seed: string, w = 800, h = 800) {
   return `https://picsum.photos/seed/${seed}/${w}/${h}`;
@@ -44,7 +43,7 @@ export const FILAMENTS = [
     pricePerGram: 0.045,
     density: 1.24,
     stockGrams: 12000,
-    strength: StrengthRating.MEDIUM,
+    strength: "MEDIUM" as const,
     finish: "Matte",
     description: "Easy-to-print, biodegradable filament. Great all-purpose choice for decor and prototypes.",
     colors: [
@@ -63,7 +62,7 @@ export const FILAMENTS = [
     pricePerGram: 0.055,
     density: 1.24,
     stockGrams: 9000,
-    strength: StrengthRating.HIGH,
+    strength: "HIGH" as const,
     finish: "Semi-Gloss",
     description: "Reinforced PLA blend with improved layer adhesion and impact resistance over standard PLA.",
     colors: [
@@ -80,7 +79,7 @@ export const FILAMENTS = [
     pricePerGram: 0.06,
     density: 1.27,
     stockGrams: 8000,
-    strength: StrengthRating.HIGH,
+    strength: "HIGH" as const,
     finish: "Glossy",
     description: "Durable, semi-flexible, and moisture resistant. Ideal for functional and outdoor parts.",
     colors: [
@@ -97,7 +96,7 @@ export const FILAMENTS = [
     pricePerGram: 0.05,
     density: 1.04,
     stockGrams: 7000,
-    strength: StrengthRating.HIGH,
+    strength: "HIGH" as const,
     finish: "Matte",
     description: "Tough, heat resistant thermoplastic. Great for mechanical parts and enclosures.",
     colors: [
@@ -113,7 +112,7 @@ export const FILAMENTS = [
     pricePerGram: 0.09,
     density: 1.21,
     stockGrams: 4000,
-    strength: StrengthRating.MEDIUM,
+    strength: "MEDIUM" as const,
     finish: "Rubber-like Flexible",
     description: "Elastic, impact-absorbing filament for phone cases, gaskets, and wearable parts.",
     colors: [
@@ -129,7 +128,7 @@ export const FILAMENTS = [
     pricePerGram: 0.065,
     density: 1.23,
     stockGrams: 5000,
-    strength: StrengthRating.LOW,
+    strength: "LOW" as const,
     finish: "Silky High-Gloss",
     description: "Metallic, silk-like sheen. Best for display pieces and gifts where finish matters most.",
     colors: [
@@ -146,7 +145,7 @@ export const FILAMENTS = [
     pricePerGram: 0.12,
     density: 1.15,
     stockGrams: 3000,
-    strength: StrengthRating.VERY_HIGH,
+    strength: "VERY_HIGH" as const,
     finish: "Matte Textured",
     description: "PLA infused with chopped carbon fiber for maximum stiffness and a matte, textured finish.",
     colors: [{ name: "Carbon Black", hex: "#0F0F10" }],
@@ -158,7 +157,7 @@ export const FILAMENTS = [
     pricePerGram: 0.08,
     density: 1.15,
     stockGrams: 3500,
-    strength: StrengthRating.LOW,
+    strength: "LOW" as const,
     finish: "Wood Grain (sandable)",
     description: "PLA blended with recycled wood fiber. Can be sanded and stained for a natural wood look.",
     colors: [

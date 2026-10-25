@@ -57,7 +57,7 @@ export function PricingSettingsForm({ initial }: { initial: PricingSettingsValue
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
         {field(
           "machineRatePerHour",
-          "Machine rate ($/hr)",
+          "Machine rate (₹/hr)",
           "Charged for every hour the printer is estimated to run."
         )}
         {field(
@@ -65,7 +65,7 @@ export function PricingSettingsForm({ initial }: { initial: PricingSettingsValue
           "Print speed (g/hr)",
           "Average grams of filament extruded per hour."
         )}
-        {field("finishingCostFlat", "Finishing cost ($)", "Flat fee per custom print line item.")}
+        {field("finishingCostFlat", "Finishing cost (₹)", "Flat fee per custom print line item.")}
         {field(
           "infillFactor",
           "Infill factor",
@@ -80,7 +80,7 @@ export function PricingSettingsForm({ initial }: { initial: PricingSettingsValue
         )}
         {field(
           "minimumPrice",
-          "Minimum price ($)",
+          "Minimum price (₹)",
           "Price floor for a single custom print, even if the computed cost is lower."
         )}
       </div>

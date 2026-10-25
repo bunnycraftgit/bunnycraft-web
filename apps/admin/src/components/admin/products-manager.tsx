@@ -3,7 +3,7 @@
 import * as React from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
-import { CopyIcon, LoaderCircleIcon, PencilIcon, PlusIcon, TrashIcon } from "lucide-react";
+import { CopyIcon, LoaderCircleIcon, PencilIcon, PlusIcon, TrashIcon, XIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -44,6 +44,7 @@ import { PRODUCT_STATUSES, PRODUCT_STATUS_LABEL, type ProductStatus } from "@/li
 const LOW_STOCK_THRESHOLD = 5;
 
 type Category = { id: string; name: string };
+type Spec = { label: string; value: string };
 type Product = {
   id: string;
   name: string;
@@ -54,6 +55,7 @@ type Product = {
   images: string[];
   material: string | null;
   tags: string[];
+  specifications: Spec[];
   stock: number;
   featured: boolean;
   status: ProductStatus;
@@ -73,11 +75,12 @@ function emptyForm(categoryId: string) {
     name: "",
     slug: "",
     description: "",
-    price: 19.99,
+    price: 499,
     compareAtPrice: null as number | null,
     images: [] as string[],
     material: "",
     tags: "",
+    specifications: [] as Spec[],
     stock: 25,
     featured: false,
     status: "LIVE" as ProductStatus,
@@ -146,6 +149,7 @@ export function ProductsManager({
       images: p.images,
       material: p.material ?? "",
       tags: p.tags.join(", "),
+      specifications: p.specifications,
       stock: p.stock,
       featured: p.featured,
       status: p.status,
@@ -162,6 +166,9 @@ export function ProductsManager({
         slug: form.slug || slugify(form.name),
         tags: form.tags.split(",").map((s) => s.trim()).filter(Boolean),
         material: form.material || undefined,
+        specifications: form.specifications
+          .map((s) => ({ label: s.label.trim(), value: s.value.trim() }))
+          .filter((s) => s.label || s.value),
       };
       const res = await fetch(editing ? `/api/admin/products/${editing.id}` : "/api/admin/products", {
         method: editing ? "PATCH" : "POST",
@@ -206,6 +213,7 @@ export function ProductsManager({
         images: p.images,
         material: p.material ?? undefined,
         tags: p.tags,
+        specifications: p.specifications,
         stock: p.stock,
         featured: false,
         status: p.status,
@@ -238,6 +246,21 @@ export function ProductsManager({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ featured: !p.featured }),
     }).catch(() => toast.error("Couldn't update that product."));
+  }
+
+  function updateSpec(index: number, patch: Partial<Spec>) {
+    setForm((f) => ({
+      ...f,
+      specifications: f.specifications.map((s, i) => (i === index ? { ...s, ...patch } : s)),
+    }));
+  }
+
+  function addSpec() {
+    setForm((f) => ({ ...f, specifications: [...f.specifications, { label: "", value: "" }] }));
+  }
+
+  function removeSpec(index: number) {
+    setForm((f) => ({ ...f, specifications: f.specifications.filter((_, i) => i !== index) }));
   }
 
   function toggleSelected(id: string) {
@@ -459,7 +482,7 @@ export function ProductsManager({
                 />
               </div>
               <div className="flex flex-col gap-1.5">
-                <Label>Price ($)</Label>
+                <Label>Price (₹)</Label>
                 <Input
                   type="number"
                   step="0.01"
@@ -468,7 +491,7 @@ export function ProductsManager({
                 />
               </div>
               <div className="flex flex-col gap-1.5">
-                <Label>Compare-at price ($)</Label>
+                <Label>Compare-at price (₹)</Label>
                 <Input
                   type="number"
                   step="0.01"
@@ -547,6 +570,47 @@ export function ProductsManager({
                 <Label>Tags (comma separated)</Label>
                 <Input value={form.tags} onChange={(e) => setForm({ ...form, tags: e.target.value })} />
               </div>
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <div className="flex items-center justify-between">
+                <Label>Specifications</Label>
+                <Button type="button" size="sm" variant="outline" onClick={addSpec}>
+                  <PlusIcon /> Add
+                </Button>
+              </div>
+              {form.specifications.length === 0 ? (
+                <p className="text-xs text-muted-foreground">
+                  e.g. Dimensions — 10 × 8 × 12 cm, Weight — 120 g, Finish — Matte
+                </p>
+              ) : (
+                <div className="flex flex-col gap-2">
+                  {form.specifications.map((spec, i) => (
+                    <div key={i} className="flex items-center gap-2">
+                      <Input
+                        placeholder="Name (e.g. Dimensions)"
+                        value={spec.label}
+                        onChange={(e) => updateSpec(i, { label: e.target.value })}
+                        className="w-2/5"
+                      />
+                      <Input
+                        placeholder="Value (e.g. 10 × 8 × 12 cm)"
+                        value={spec.value}
+                        onChange={(e) => updateSpec(i, { value: e.target.value })}
+                        className="flex-1"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeSpec(i)}
+                        className="text-muted-foreground hover:text-destructive"
+                        aria-label="Remove specification"
+                      >
+                        <XIcon className="size-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             <label className="flex items-center gap-2.5 text-sm">

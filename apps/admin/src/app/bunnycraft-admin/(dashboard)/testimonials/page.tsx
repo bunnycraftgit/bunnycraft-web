@@ -1,14 +1,17 @@
 import type { Metadata } from "next";
 
 import { TestimonialsManager } from "@/components/admin/testimonials-manager";
-import { prisma } from "@bunnycraft/db";
+import { Testimonial } from "@bunnycraft/db";
 
 export const metadata: Metadata = { title: "Admin — Testimonials" };
 
 export default async function AdminTestimonialsPage() {
   // Unpublished first so new submissions from the website are easy to spot.
-  const testimonials = await prisma.testimonial.findMany({
-    orderBy: [{ published: "asc" }, { createdAt: "desc" }],
+  const testimonials = await Testimonial.findAll({
+    order: [
+      ["published", "ASC"],
+      ["createdAt", "DESC"],
+    ],
   });
 
   return (

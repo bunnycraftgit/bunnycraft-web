@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 import { OrdersManager } from "@/components/admin/orders-manager";
-import { prisma } from "@bunnycraft/db";
+import { Order, OrderItem, User } from "@bunnycraft/db";
 import { parsePage, parseQuery, paginationMeta } from "@/lib/pagination";
 import { buildOrderWhere } from "@/lib/admin-order-filters";
 
@@ -20,14 +20,17 @@ export default async function AdminOrdersPage({
   const where = buildOrderWhere({ q, status: sp.status, dateFrom: sp.dateFrom, dateTo: sp.dateTo });
 
   const [orders, total] = await Promise.all([
-    prisma.order.findMany({
+    Order.findAll({
       where,
-      include: { items: { select: { id: true } }, user: { select: { name: true, email: true } } },
-      orderBy: { createdAt: "desc" },
-      skip: (page - 1) * PAGE_SIZE,
-      take: PAGE_SIZE,
+      include: [
+        { model: OrderItem, as: "items", attributes: ["id"] },
+        { model: User, as: "user", attributes: ["name", "email"] },
+      ],
+      order: [["createdAt", "DESC"]],
+      offset: (page - 1) * PAGE_SIZE,
+      limit: PAGE_SIZE,
     }),
-    prisma.order.count({ where }),
+    Order.count({ where }),
   ]);
 
   const plain = orders.map((o) => ({
@@ -39,8 +42,8 @@ export default async function AdminOrdersPage({
     paymentProofUrl: o.paymentProofUrl,
     shippingName: o.shippingName,
     guestEmail: o.guestEmail,
-    user: o.user,
-    items: o.items,
+    user: o.user ? { name: o.user.name, email: o.user.email } : null,
+    items: (o.items ?? []).map((i) => ({ id: i.id })),
   }));
 
   return <OrdersManager initial={plain} meta={paginationMeta(page, total, PAGE_SIZE)} />;

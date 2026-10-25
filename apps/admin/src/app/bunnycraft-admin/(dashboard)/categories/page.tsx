@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 
 import { CategoriesManager } from "@/components/admin/categories-manager";
 import { paginationMeta, parsePage, parseQuery } from "@/lib/pagination";
-import { prisma } from "@bunnycraft/db";
+import { Category, contains, countOf } from "@bunnycraft/db";
 
 export const metadata: Metadata = { title: "Admin — Categories" };
 
@@ -16,17 +16,17 @@ export default async function AdminCategoriesPage({
   const sp = await searchParams;
   const page = parsePage(sp);
   const q = parseQuery(sp);
-  const where = q ? { name: { contains: q } } : {};
+  const where = q ? { name: contains(q) } : {};
 
   const [categories, total] = await Promise.all([
-    prisma.category.findMany({
+    Category.findAll({
       where,
-      include: { _count: { select: { products: true } } },
-      orderBy: { name: "asc" },
-      skip: (page - 1) * PAGE_SIZE,
-      take: PAGE_SIZE,
+      attributes: { include: [[countOf("Product", "categoryId", "Category"), "productCount"]] },
+      order: [["name", "ASC"]],
+      offset: (page - 1) * PAGE_SIZE,
+      limit: PAGE_SIZE,
     }),
-    prisma.category.count({ where }),
+    Category.count({ where }),
   ]);
 
   const plain = categories.map((c) => ({
@@ -35,7 +35,7 @@ export default async function AdminCategoriesPage({
     slug: c.slug,
     description: c.description,
     image: c.image,
-    productCount: c._count.products,
+    productCount: Number(c.get("productCount")),
   }));
 
   return (

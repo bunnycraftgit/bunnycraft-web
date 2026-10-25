@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { prisma } from "@bunnycraft/db";
+import { Order, OrderItem, User, updateByPk } from "@bunnycraft/db";
 import { requireAdmin } from "@/lib/require-admin";
 import { orderUpdateSchema } from "@/lib/validations/admin";
 
@@ -9,9 +9,11 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   if (response) return response;
 
   const { id } = await params;
-  const order = await prisma.order.findUnique({
-    where: { id },
-    include: { items: true, user: { select: { name: true, email: true } } },
+  const order = await Order.findByPk(id, {
+    include: [
+      { model: OrderItem, as: "items" },
+      { model: User, as: "user", attributes: ["name", "email"] },
+    ],
   });
   if (!order) {
     return NextResponse.json({ error: "Order not found." }, { status: 404 });
@@ -29,6 +31,9 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     return NextResponse.json({ error: parsed.error.issues[0]?.message }, { status: 400 });
   }
 
-  const order = await prisma.order.update({ where: { id }, data: parsed.data });
+  const order = await updateByPk(Order, id, parsed.data);
+  if (!order) {
+    return NextResponse.json({ error: "Order not found." }, { status: 404 });
+  }
   return NextResponse.json(order);
 }

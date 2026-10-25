@@ -232,7 +232,7 @@ export function CouponsManager({ initial, meta }: { initial: Coupon[]; meta: Met
                 />
               </div>
               <div className="flex flex-col gap-1.5">
-                <Label>Min. subtotal ($, optional)</Label>
+                <Label>Min. subtotal (₹, optional)</Label>
                 <Input
                   type="number"
                   step="0.01"

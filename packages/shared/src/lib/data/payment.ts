@@ -1,4 +1,4 @@
-import { prisma } from "@bunnycraft/db";
+import { PaymentSettings } from "@bunnycraft/db";
 
 export type PaymentSettingsValues = {
   qrImageUrl: string | null;
@@ -14,7 +14,7 @@ const EMPTY_PAYMENT_SETTINGS: PaymentSettingsValues = {
 
 export async function getPaymentSettings(): Promise<PaymentSettingsValues> {
   try {
-    const settings = await prisma.paymentSettings.findUnique({ where: { id: 1 } });
+    const settings = await PaymentSettings.findByPk(1);
     if (!settings) return EMPTY_PAYMENT_SETTINGS;
     return {
       qrImageUrl: settings.qrImageUrl,

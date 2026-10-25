@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { auth } from "@/lib/auth";
-import { prisma } from "@bunnycraft/db";
+import { User, countOf, updateByPk } from "@bunnycraft/db";
 import { requireAdmin } from "@/lib/require-admin";
 import { userRoleSchema } from "@/lib/validations/admin";
 
@@ -31,17 +31,19 @@ export async function PATCH(
     );
   }
 
-  const user = await prisma.user.update({
-    where: { id },
-    data: parsed.data,
-    select: {
-      id: true,
-      name: true,
-      email: true,
-      role: true,
-      createdAt: true,
-      _count: { select: { orders: true } },
-    },
+  const updated = await updateByPk(User, id, parsed.data);
+  if (!updated) {
+    return NextResponse.json({ error: "User not found." }, { status: 404 });
+  }
+  const user = await User.findByPk(id, {
+    attributes: [
+      "id",
+      "name",
+      "email",
+      "role",
+      "createdAt",
+      [countOf("Order", "userId", "User"), "orderCount"],
+    ],
   });
   return NextResponse.json(user);
 }
@@ -63,7 +65,7 @@ export async function DELETE(
   }
 
   try {
-    await prisma.user.delete({ where: { id } });
+    await User.destroy({ where: { id } });
     return NextResponse.json({ ok: true });
   } catch {
     return NextResponse.json(

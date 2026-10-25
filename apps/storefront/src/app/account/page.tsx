@@ -6,7 +6,7 @@ import { ProfileForm } from "@/components/account/profile-form";
 import { ChangePasswordForm } from "@/components/account/change-password-form";
 import { AddressManager } from "@/components/account/address-manager";
 import { auth } from "@/lib/auth";
-import { prisma } from "@bunnycraft/db";
+import { Address, User } from "@bunnycraft/db";
 
 export const metadata: Metadata = { title: "Your Account" };
 
@@ -15,10 +15,13 @@ export default async function AccountPage() {
   if (!session?.user) redirect("/login?callbackUrl=/account");
 
   const [user, addresses] = await Promise.all([
-    prisma.user.findUnique({ where: { id: session.user.id } }),
-    prisma.address.findMany({
+    User.findByPk(session.user.id),
+    Address.findAll({
       where: { userId: session.user.id },
-      orderBy: [{ isDefault: "desc" }, { createdAt: "desc" }],
+      order: [
+        ["isDefault", "DESC"],
+        ["createdAt", "DESC"],
+      ],
     }),
   ]);
 

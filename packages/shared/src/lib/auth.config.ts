@@ -8,7 +8,7 @@ import type { NextAuthConfig } from "next-auth";
 const cookiePrefix = process.env.AUTH_COOKIE_PREFIX ?? "authjs";
 
 // Edge-safe config shared by middleware and the full auth.ts. Must not import
-// Prisma (or anything Node-only) — middleware runs on the edge runtime and
+// the database layer (or anything Node-only) — middleware runs on the edge runtime and
 // only needs to decode the session JWT, not hit the database.
 export const authConfig: NextAuthConfig = {
   trustHost: true,

@@ -4,14 +4,14 @@ import * as React from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { toast } from "sonner";
-import { EyeIcon, HeartIcon, ShoppingBagIcon } from "lucide-react";
+import { CheckIcon, EyeIcon, HeartIcon, ShoppingBagIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { StarRating } from "@/components/shop/star-rating";
 import { QuickViewDialog } from "@/components/shop/quick-view-dialog";
 import { useWishlist } from "@/hooks/use-wishlist";
-import { useCartStore } from "@/store/cart-store";
+import { useCartProductQuantity, useCartStore } from "@/store/cart-store";
 import { cn, formatCurrency } from "@/lib/utils";
 import { PRODUCT_STATUS_LABEL, isPurchasable } from "@/lib/product-status";
 import type { PlainProduct } from "@/lib/data/products";
@@ -21,6 +21,8 @@ export function ProductCard({ product }: { product: PlainProduct }) {
   const addProduct = useCartStore((s) => s.addProduct);
   const [quickViewOpen, setQuickViewOpen] = React.useState(false);
   const purchasable = isPurchasable(product.status);
+  const inCartQuantity = useCartProductQuantity(product.id);
+  const inCart = purchasable && inCartQuantity > 0;
 
   function handleAddToCart() {
     if (!purchasable) return;
@@ -80,15 +82,30 @@ export function ProductCard({ product }: { product: PlainProduct }) {
             />
           </button>
 
-          <div className="absolute inset-x-3 bottom-3 flex translate-y-2 gap-2 opacity-0 transition-all duration-200 group-hover:translate-y-0 group-hover:opacity-100">
-            <Button
-              size="sm"
-              className="flex-1"
-              onClick={handleAddToCart}
-              disabled={!purchasable}
-            >
-              <ShoppingBagIcon /> {purchasable ? "Add to Cart" : PRODUCT_STATUS_LABEL[product.status]}
-            </Button>
+          <div
+            className={cn(
+              "absolute inset-x-3 bottom-3 flex gap-2 transition-all duration-200",
+              inCart
+                ? "translate-y-0 opacity-100"
+                : "translate-y-2 opacity-0 group-hover:translate-y-0 group-hover:opacity-100"
+            )}
+          >
+            {inCart ? (
+              <Button size="sm" variant="secondary" className="flex-1" asChild>
+                <Link href="/bunnycraft-cart">
+                  <CheckIcon /> In Cart ({inCartQuantity}) · View
+                </Link>
+              </Button>
+            ) : (
+              <Button
+                size="sm"
+                className="flex-1"
+                onClick={handleAddToCart}
+                disabled={!purchasable}
+              >
+                <ShoppingBagIcon /> {purchasable ? "Add to Cart" : PRODUCT_STATUS_LABEL[product.status]}
+              </Button>
+            )}
             <Button
               size="icon-sm"
               variant="glass"

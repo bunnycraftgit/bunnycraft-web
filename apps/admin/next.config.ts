@@ -4,6 +4,9 @@ import type { NextConfig } from "next";
 // collide with the storefront zone's own assets once both are proxied under
 // the same public domain. See node_modules/next/dist/docs/01-app/02-guides/multi-zones.md.
 const nextConfig: NextConfig = {
+  // Sequelize loads its dialect dynamically and mysql2 has native-ish deps;
+  // load both with Node's require instead of bundling them.
+  serverExternalPackages: ["sequelize", "mysql2"],
   assetPrefix: "/bunnycraft-admin-static",
   // Inlined at build time so the admin zone always gets its own session
   // cookie, even when both apps run in one process tree sharing env vars

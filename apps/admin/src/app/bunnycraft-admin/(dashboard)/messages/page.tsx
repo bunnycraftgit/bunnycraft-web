@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 import { MessagesManager } from "@/components/admin/messages-manager";
-import { prisma } from "@bunnycraft/db";
+import { ContactMessage, NewsletterSubscriber, Op, contains } from "@bunnycraft/db";
 import { parsePage, parseQuery, paginationMeta } from "@/lib/pagination";
 
 export const metadata: Metadata = { title: "Admin — Messages" };
@@ -25,25 +25,31 @@ export default async function AdminMessagesPage({
   const newsletterQ = parseQuery(sp, "newsletterQ");
 
   const contactWhere = contactQ
-    ? { OR: [{ name: { contains: contactQ } }, { email: { contains: contactQ } }, { subject: { contains: contactQ } }] }
+    ? {
+        [Op.or]: [
+          { name: contains(contactQ) },
+          { email: contains(contactQ) },
+          { subject: contains(contactQ) },
+        ],
+      }
     : {};
-  const newsletterWhere = newsletterQ ? { email: { contains: newsletterQ } } : {};
+  const newsletterWhere = newsletterQ ? { email: contains(newsletterQ) } : {};
 
   const [messages, messagesTotal, subscribers, subscribersTotal] = await Promise.all([
-    prisma.contactMessage.findMany({
+    ContactMessage.findAll({
       where: contactWhere,
-      orderBy: { createdAt: "desc" },
-      skip: (contactPage - 1) * PAGE_SIZE,
-      take: PAGE_SIZE,
+      order: [["createdAt", "DESC"]],
+      offset: (contactPage - 1) * PAGE_SIZE,
+      limit: PAGE_SIZE,
     }),
-    prisma.contactMessage.count({ where: contactWhere }),
-    prisma.newsletterSubscriber.findMany({
+    ContactMessage.count({ where: contactWhere }),
+    NewsletterSubscriber.findAll({
       where: newsletterWhere,
-      orderBy: { createdAt: "desc" },
-      skip: (newsletterPage - 1) * PAGE_SIZE,
-      take: PAGE_SIZE,
+      order: [["createdAt", "DESC"]],
+      offset: (newsletterPage - 1) * PAGE_SIZE,
+      limit: PAGE_SIZE,
     }),
-    prisma.newsletterSubscriber.count({ where: newsletterWhere }),
+    NewsletterSubscriber.count({ where: newsletterWhere }),
   ]);
 
   const plainMessages = messages.map((m) => ({

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { auth } from "@/lib/auth";
-import { prisma } from "@bunnycraft/db";
+import { Address, Op } from "@bunnycraft/db";
 import { shippingAddressSchema } from "@/lib/validations/order";
 
 const patchSchema = shippingAddressSchema.partial().extend({
@@ -16,7 +16,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   }
   const { id } = await params;
 
-  const address = await prisma.address.findUnique({ where: { id } });
+  const address = await Address.findByPk(id);
   if (!address || address.userId !== session.user.id) {
     return NextResponse.json({ error: "Address not found." }, { status: 404 });
   }
@@ -27,14 +27,14 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   }
 
   if (parsed.data.isDefault) {
-    await prisma.address.updateMany({
-      where: { userId: session.user.id, NOT: { id } },
-      data: { isDefault: false },
-    });
+    await Address.update(
+      { isDefault: false },
+      { where: { userId: session.user.id, id: { [Op.ne]: id } } }
+    );
   }
 
-  const updated = await prisma.address.update({ where: { id }, data: parsed.data });
-  return NextResponse.json(updated);
+  await address.update(parsed.data);
+  return NextResponse.json(address);
 }
 
 export async function DELETE(_request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -44,11 +44,11 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
   }
   const { id } = await params;
 
-  const address = await prisma.address.findUnique({ where: { id } });
+  const address = await Address.findByPk(id);
   if (!address || address.userId !== session.user.id) {
     return NextResponse.json({ error: "Address not found." }, { status: 404 });
   }
 
-  await prisma.address.delete({ where: { id } });
+  await address.destroy();
   return NextResponse.json({ ok: true });
 }

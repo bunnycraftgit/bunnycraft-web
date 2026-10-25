@@ -1,4 +1,4 @@
-import { prisma } from "@bunnycraft/db";
+import { Testimonial } from "@bunnycraft/db";
 
 export type PlainTestimonialEntry = {
   id: string;
@@ -12,10 +12,10 @@ export type PlainTestimonialEntry = {
 // Testimonials the admin added by hand (Admin → Testimonials).
 export async function getPublishedTestimonials(limit = 12): Promise<PlainTestimonialEntry[]> {
   try {
-    const rows = await prisma.testimonial.findMany({
+    const rows = await Testimonial.findAll({
       where: { published: true },
-      orderBy: { createdAt: "desc" },
-      take: limit,
+      order: [["createdAt", "DESC"]],
+      limit,
     });
     return rows.map((t) => ({
       id: t.id,

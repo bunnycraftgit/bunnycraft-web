@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
 
-import { prisma } from "@bunnycraft/db";
+import { ContactMessage } from "@bunnycraft/db";
 import { requireAdmin } from "@/lib/require-admin";
 
 export async function GET() {
   const { response } = await requireAdmin();
   if (response) return response;
 
-  const messages = await prisma.contactMessage.findMany({ orderBy: { createdAt: "desc" } });
+  const messages = await ContactMessage.findAll({ order: [["createdAt", "DESC"]] });
   return NextResponse.json(messages);
 }

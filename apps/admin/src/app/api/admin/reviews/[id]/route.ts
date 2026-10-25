@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { prisma } from "@bunnycraft/db";
+import { Review } from "@bunnycraft/db";
 import { requireAdmin } from "@/lib/require-admin";
 import { refreshProductRating } from "@/lib/data/reviews";
 
@@ -9,7 +9,11 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
   if (response) return response;
 
   const { id } = await params;
-  const review = await prisma.review.delete({ where: { id } });
+  const review = await Review.findByPk(id);
+  if (!review) {
+    return NextResponse.json({ error: "Review not found." }, { status: 404 });
+  }
+  await review.destroy();
   await refreshProductRating(review.productId);
   return NextResponse.json({ ok: true });
 }

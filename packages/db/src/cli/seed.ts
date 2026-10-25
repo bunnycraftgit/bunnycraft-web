@@ -1,41 +1,40 @@
-import { PrismaClient, DiscountType, Role } from "@prisma/client";
 import bcrypt from "bcryptjs";
 
 import { CATEGORIES, FILAMENTS, PRODUCTS, REVIEW_POOL, img, printImage } from "@bunnycraft/shared/src/lib/catalog-data";
-
-const prisma = new PrismaClient();
+import { sequelize } from "../client";
+import {
+  AdminUser,
+  Category,
+  Coupon,
+  Filament,
+  PricingSettings,
+  Product,
+  Review,
+  User,
+} from "../models";
 
 async function main() {
   console.log("Seeding categories...");
   const categoryBySlug = new Map<string, string>();
   for (const c of CATEGORIES) {
-    const category = await prisma.category.upsert({
+    const values = { name: c.name, description: c.description, image: printImage(c.imageIndex, 700, 700) };
+    const [category, created] = await Category.findOrCreate({
       where: { slug: c.slug },
-      update: { name: c.name, description: c.description, image: printImage(c.imageIndex, 700, 700) },
-      create: {
-        name: c.name,
-        slug: c.slug,
-        description: c.description,
-        image: printImage(c.imageIndex, 700, 700),
-      },
+      defaults: { ...values, slug: c.slug },
     });
+    if (!created) await category.update(values);
     categoryBySlug.set(c.slug, category.id);
   }
 
   console.log("Seeding filaments...");
   for (const f of FILAMENTS) {
-    await prisma.filament.upsert({
-      where: { id: f.id },
-      update: {},
-      create: { ...f, colors: f.colors },
-    });
+    await Filament.findOrCreate({ where: { id: f.id }, defaults: { ...f, colors: [...f.colors] } });
   }
 
   console.log("Seeding pricing settings...");
-  await prisma.pricingSettings.upsert({
+  await PricingSettings.findOrCreate({
     where: { id: 1 },
-    update: {},
-    create: {
+    defaults: {
       id: 1,
       machineRatePerHour: 2.5,
       printSpeedGramsPerHour: 20,
@@ -50,15 +49,14 @@ async function main() {
   const createdProducts: { id: string; slug: string }[] = [];
   for (const [i, p] of PRODUCTS.entries()) {
     const categoryId = categoryBySlug.get(p.categorySlug)!;
-    const product = await prisma.product.upsert({
+    const [product] = await Product.findOrCreate({
       where: { slug: p.slug },
-      update: {},
-      create: {
+      defaults: {
         name: p.name,
         slug: p.slug,
         description: p.description,
         price: p.price,
-        compareAtPrice: "compareAtPrice" in p ? p.compareAtPrice : undefined,
+        compareAtPrice: "compareAtPrice" in p ? (p.compareAtPrice ?? null) : null,
         images: [printImage(i), printImage(i + 3), printImage(i + 6)],
         material: p.material,
         tags: [...p.tags],
@@ -77,83 +75,61 @@ async function main() {
     const reviewCount = 2 + Math.floor(Math.random() * 3);
     const picks = [...REVIEW_POOL].sort(() => Math.random() - 0.5).slice(0, reviewCount);
     for (const r of picks) {
-      await prisma.review.create({
-        data: {
-          productId: product.id,
-          authorName: r.authorName,
-          rating: r.rating,
-          comment: r.comment,
-          photoUrl: img(`avatar-${r.authorName}`, 128, 128),
-        },
+      await Review.create({
+        productId: product.id,
+        authorName: r.authorName,
+        rating: r.rating,
+        comment: r.comment,
+        photoUrl: img(`avatar-${r.authorName}`, 128, 128),
       });
     }
-    const avgRating =
-      picks.reduce((sum, r) => sum + r.rating, 0) / Math.max(picks.length, 1);
-    await prisma.product.update({
-      where: { id: product.id },
-      data: {
-        rating: Math.round(avgRating * 10) / 10,
-        reviewCount: picks.length,
-      },
-    });
+    const avgRating = picks.reduce((sum, r) => sum + r.rating, 0) / Math.max(picks.length, 1);
+    await Product.update(
+      { rating: Math.round(avgRating * 10) / 10, reviewCount: picks.length },
+      { where: { id: product.id } }
+    );
   }
 
   console.log("Seeding coupons...");
-  await prisma.coupon.upsert({
+  await Coupon.findOrCreate({
     where: { code: "WELCOME10" },
-    update: {},
-    create: {
-      code: "WELCOME10",
-      discountType: DiscountType.PERCENT,
-      value: 10,
-      active: true,
-    },
+    defaults: { code: "WELCOME10", discountType: "PERCENT", value: 10, active: true },
   });
-  await prisma.coupon.upsert({
+  await Coupon.findOrCreate({
     where: { code: "SHIP5" },
-    update: {},
-    create: {
-      code: "SHIP5",
-      discountType: DiscountType.FIXED,
-      value: 5,
-      minSubtotal: 30,
-      active: true,
-    },
+    defaults: { code: "SHIP5", discountType: "FIXED", value: 5, minSubtotal: 30, active: true },
   });
 
   console.log("Seeding users...");
   const adminPassword = await bcrypt.hash("Admin123!", 10);
   const demoPassword = await bcrypt.hash("Demo1234!", 10);
 
-  await prisma.user.upsert({
+  await User.findOrCreate({
     where: { email: "admin@bunnycraft.com" },
-    update: {},
-    create: {
+    defaults: {
       name: "BunnyCraft Admin",
       email: "admin@bunnycraft.com",
       passwordHash: adminPassword,
-      role: Role.ADMIN,
+      role: "ADMIN",
     },
   });
 
-  await prisma.user.upsert({
+  await User.findOrCreate({
     where: { email: "demo@bunnycraft.com" },
-    update: {},
-    create: {
+    defaults: {
       name: "Demo Customer",
       email: "demo@bunnycraft.com",
       passwordHash: demoPassword,
-      role: Role.CUSTOMER,
+      role: "CUSTOMER",
     },
   });
 
   console.log("Seeding admin users...");
   // Separate table from User entirely — this is the only way an admin
   // account gets created (no self-service signup in the admin app).
-  await prisma.adminUser.upsert({
+  await AdminUser.findOrCreate({
     where: { email: "admin@bunnycraft.com" },
-    update: {},
-    create: {
+    defaults: {
       name: "BunnyCraft Admin",
       email: "admin@bunnycraft.com",
       passwordHash: adminPassword,
@@ -168,8 +144,6 @@ async function main() {
 main()
   .catch((e) => {
     console.error(e);
-    process.exit(1);
+    process.exitCode = 1;
   })
-  .finally(async () => {
-    await prisma.$disconnect();
-  });
+  .finally(() => sequelize.close());

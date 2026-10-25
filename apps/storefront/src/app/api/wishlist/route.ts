@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { auth } from "@/lib/auth";
-import { prisma } from "@bunnycraft/db";
+import { WishlistItem } from "@bunnycraft/db";
 
 export async function GET() {
   const session = await auth();
@@ -10,9 +10,9 @@ export async function GET() {
     return NextResponse.json({ error: "Not signed in." }, { status: 401 });
   }
 
-  const items = await prisma.wishlistItem.findMany({
+  const items = await WishlistItem.findAll({
     where: { userId: session.user.id },
-    select: { productId: true },
+    attributes: ["productId"],
   });
 
   return NextResponse.json(items);
@@ -31,13 +31,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid product." }, { status: 400 });
   }
 
-  await prisma.wishlistItem.upsert({
-    where: {
-      userId_productId: { userId: session.user.id, productId: parsed.data.productId },
-    },
-    update: {},
-    create: { userId: session.user.id, productId: parsed.data.productId },
-  });
+  const key = { userId: session.user.id, productId: parsed.data.productId };
+  await WishlistItem.findOrCreate({ where: key, defaults: key });
 
   return NextResponse.json({ ok: true });
 }
@@ -53,13 +48,9 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ error: "Invalid product." }, { status: 400 });
   }
 
-  await prisma.wishlistItem
-    .delete({
-      where: {
-        userId_productId: { userId: session.user.id, productId: parsed.data.productId },
-      },
-    })
-    .catch(() => null);
+  await WishlistItem.destroy({
+    where: { userId: session.user.id, productId: parsed.data.productId },
+  });
 
   return NextResponse.json({ ok: true });
 }

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { prisma } from "@bunnycraft/db";
+import { Testimonial, updateByPk } from "@bunnycraft/db";
 import { requireAdmin } from "@/lib/require-admin";
 import { testimonialSchema } from "@/lib/validations/admin";
 
@@ -15,7 +15,10 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   }
 
   const data = parsed.data.place === "" ? { ...parsed.data, place: null } : parsed.data;
-  const testimonial = await prisma.testimonial.update({ where: { id }, data });
+  const testimonial = await updateByPk(Testimonial, id, data);
+  if (!testimonial) {
+    return NextResponse.json({ error: "Testimonial not found." }, { status: 404 });
+  }
   return NextResponse.json(testimonial);
 }
 
@@ -24,6 +27,6 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
   if (response) return response;
 
   const { id } = await params;
-  await prisma.testimonial.delete({ where: { id } }).catch(() => null);
+  await Testimonial.destroy({ where: { id } });
   return NextResponse.json({ ok: true });
 }
